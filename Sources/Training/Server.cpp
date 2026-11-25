@@ -230,6 +230,13 @@ constexpr uint8_t kAcidBlockId = 254;
 // so a cell at a time rather than one lone collapse of the paint.
 constexpr float kAcidBeat = 0.5f;
 constexpr float kAcidCrumble = 0.12f;
+// The acid's own beds of vapour, ids held off the top of the bed
+// budget the way in splits: a landing claims a pair, one bed the
+// burst and one the pool, and the pairs are handed out round the
+// band, so a landing lays its vapour over a bed an older landing
+// wore and no band of the way in ever wears a splash for its own.
+constexpr uint8_t kAcidBeds = 10;
+constexpr uint8_t kAcidBedFirst = 255 - kAcidBeds;
 
 // The catch of the pack: a follower runs once its leader stands more than
 // this far ahead. Every heel of the line walks at the same pace as the one
@@ -804,6 +811,9 @@ struct Server::Impl {
     // The clock of the pool's burn: the beat the acid next works on
     // whoever stands their ground inside the paint.
     double acid_beat_at = 0.0;
+    // The pair of vapour beds the next landing wears, walked round the
+    // band each time a spit breaks open.
+    uint8_t acid_smoke_next = 0;
     // Where the people were, a ring per slot: a sample every kPastBeat,
     // held kPastKeep seconds. The lag of a spit reads a place a body
     // stood this long back, and only the still are caught where they
@@ -4481,7 +4491,8 @@ struct Server::Impl {
     void smoke_route(const std::vector<FrontRead>& fronts) {
         if (fronts.empty()) return;
         constexpr int kStride = 1;          // a bed a tread: the full pour, twice the spread
-        constexpr int kBeds = 254;          // the client's own budget of bed ids, clear of 255
+        // ten beds of it held off the top for the acid's own vapour
+        constexpr int kBeds = 244;
         constexpr uint16_t kStay = 7;       // 0.7 s it keeps coming: the heavier pour, one blink's worth and a little over
         constexpr uint8_t kThins = 2;       // 0.2 s the last of it takes to go: it leaves like it settles, slowly
         const int per = kBeds / static_cast<int>(fronts.size());   // the budget, split across the fronts the blink says
@@ -4515,6 +4526,25 @@ struct Server::Impl {
                         o->playing()) send(*o, bw);
             }
         }
+    }
+
+    // The spit's landing says itself in vapour as well: a cloud of
+    // green breaks open where it struck and thins inside a blink, and
+    // the pool keeps a bed of green over its paint for the whole of
+    // the melt, so the peril reads with a breath over it and goes as
+    // the last of the blocks comes down. Both wear the acid's own
+    // green, neither hisses - a pool is loud enough as it is - and
+    // both ride the acid's own ten beds, said to every smoke the
+    // client claimed: a way read as paths wears these all the same.
+    void acid_vapour(const uint8_t id, const proto::SmokeStyle style,
+                     const Vec3& at, const uint8_t radius,
+                     const uint16_t stay, const uint8_t fade) {
+        ByteWriter bw;
+        proto::write_smoke(bw, id, style, at, radius, 0x5A, 0xFF, 0x3C,
+                           0xE8, stay, fade, static_cast<uint8_t>(0));
+        for (auto& o : players)
+            if (o && o->peer && !o->loading && o->ext_smoke &&
+                o->playing()) send(*o, bw);
     }
 
     // A reading's turns, and nothing else: a way in is said as the
@@ -5141,30 +5171,33 @@ struct Server::Impl {
         broadcast(bw, true);
     }
 
-    // The landing of the acid: a share of a grenade hurt on the people
-    // around it - the wall between saves them, blast_damage says - a
-    // pool painted green where it touches ground, and every cell of
-    // the pool booked to melt when its clock runs out. The core column
-    // it does not touch.
+    // The landing of the acid: a pool painted green where it touches
+    // ground, every cell of the pool booked to melt when its clock
+    // runs out, and a hurt brought only where the spit met a body:
+    // nothing of the grenade blast rides out from the landing any
+    // more, the people hurt are the people the pool holds under their
+    // feet or their stand, and a step out of the paint walks the
+    // peril off. The core column it does not touch.
     void acid_explode(const Grenade& g) {
         Player* owner = players[static_cast<size_t>(g.owner)].get();
         if (!owner || !owner->named || owner->team != g.team) return;
         const Vec3& pos = g.pos;
         if (pos.x < 0 || pos.x > 512 || pos.y < 0 || pos.y > 512 ||
             pos.z < 0 || pos.z > 63) return;
-        for (auto& pp : players) {
-            if (!pp || !pp->alive || pp->zombie || pp->team != kPeople)
-                continue;
-            const float blunt =
-                nade::blast_damage(&phys_map, pos, pp->body.pos);
-            const int hurt = static_cast<int>(
-                blunt * static_cast<float>(spitter.to_people));
-            if (hurt > 0)
-                set_hp(*pp, pp->hp - hurt, owner, kGrenadeKill, &pos);
-        }
         const int x = static_cast<int>(std::floor(pos.x));
         const int y = static_cast<int>(std::floor(pos.y));
         const int z = static_cast<int>(std::floor(pos.z));
+        // The burst opens a cloud of green where the spit struck,
+        // thinned inside a blink: the paint may fail it, the vapour
+        // says the mark all the same.
+        const uint8_t bed = static_cast<uint8_t>(
+            kAcidBedFirst + acid_smoke_next * 2);
+        acid_smoke_next = static_cast<uint8_t>(
+            (acid_smoke_next + 1) % (kAcidBeds / 2));
+        acid_vapour(bed, proto::SmokeStyle::Cloud,
+                    Vec3{static_cast<float>(x) + 0.5f,
+                         static_cast<float>(y) + 0.5f,
+                         static_cast<float>(z)}, 2, 7, 4);
         // The pool: the cells it lands in, the one under them, one ring
         // more around for each block of reach.
         std::vector<Cell> pool;
@@ -5180,6 +5213,44 @@ struct Server::Impl {
                 }
         if (pool.empty()) return;
         acid_colour_said();
+        // The hurt of the landing itself, and none beyond it: the
+        // people the pool holds stood in the spit, a share of a
+        // grenade hurt once, charged to the hand that spat; the pool
+        // then burns whoever wades in the paint a beat at a time,
+        // its own tick taking over.
+        const int hurt = static_cast<int>(
+            100.0f * static_cast<float>(spitter.to_people));
+        if (hurt > 0)
+            for (auto& pp : players) {
+                if (!pp || !pp->alive || pp->zombie || pp->spectator() ||
+                    pp->team != kPeople)
+                    continue;
+                const int fx = static_cast<int>(std::floor(
+                    pp->body.pos.x));
+                const int fy = static_cast<int>(std::floor(
+                    pp->body.pos.y));
+                const int fz = static_cast<int>(std::floor(
+                    pp->body.pos.z + 2.25f));
+                bool in_pool = false;
+                for (const Cell& c : pool) {
+                    if (c.x != fx || c.y != fy) continue;
+                    if (c.z != fz && c.z != fz + 1) continue;
+                    in_pool = true;
+                    break;
+                }
+                if (in_pool)
+                    set_hp(*pp, pp->hp - hurt, owner, kGrenadeKill,
+                           &pos);
+            }
+        // And its breath over the paint: a bed of green kept at the
+        // pool for the whole of the melt, fading as the last of the
+        // blocks comes down.
+        acid_vapour(static_cast<uint8_t>(bed + 1),
+                    proto::SmokeStyle::Ground,
+                    Vec3{static_cast<float>(x) + 0.5f,
+                         static_cast<float>(y) + 0.5f,
+                         static_cast<float>(z) - 0.35f},
+                    2, static_cast<uint16_t>(spitter.melt * 10.0), 8);
         int laid_cells = 0;
         for (const Cell& c : pool) {
             map.set(c.x, c.y, c.z, kAcidColour);
