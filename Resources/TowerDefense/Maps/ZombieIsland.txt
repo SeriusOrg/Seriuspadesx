@@ -1,0 +1,5 @@
+name = 'Zombie Island'
+version = '1.0'
+author = 'Bradley'
+
+extensions = { 'water_damage' : 0, 'core_position' : [244, 210, 62]}

@@ -1,0 +1,6 @@
+name = 'Oil Town Infiltration'
+version = '1.0'
+author = 'Lelue'
+description = 'Oil Town modified for Aloha Infiltration by 8x'
+
+extensions = { 'water_damage' : 0, 'core_position' : [250, 404, 34]}

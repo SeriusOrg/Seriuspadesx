@@ -1,0 +1,7 @@
+name = 'Castle Assault'
+version = '1.0'
+author = 'TheGrandmaster'
+description = 'First map for the Infiltration gamemode, made by tGM, ' \
+    '[Animus]ExiTed, SolRaK and CptCrow'
+
+extensions = { 'water_damage' : 0, 'core_position' : [52, 267, 56] }

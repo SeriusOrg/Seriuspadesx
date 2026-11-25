@@ -882,7 +882,7 @@ namespace spades {
 			if (towerDefensePickButton) {
 				const std::string map = TrainingHost::GetTowerDefenseMap();
 				towerDefensePickButton->caption = _Tr("MainScreen", "Map") + ": " +
-				    (map.empty() ? _Tr("MainScreen", "the mode course, Termina Fields")
+				    (map.empty() ? _Tr("MainScreen", "Termina Fields")
 				                 : TowerDefenseMapName(map));
 			}
 		}
@@ -906,7 +906,7 @@ namespace spades {
 		void MainScreenMainMenu::PickTowerDefenseMap() {
 			const std::vector<std::string> roster = TrainingHost::MapRoster();
 			std::vector<std::string> items;
-			items.push_back(_Tr("MainScreen", "the mode course, Termina Fields"));
+			items.push_back(_Tr("MainScreen", "Termina Fields"));
 			for (const std::string& map : roster)
 				items.push_back(TowerDefenseMapName(map));
 			const std::string current = TrainingHost::GetTowerDefenseMap();

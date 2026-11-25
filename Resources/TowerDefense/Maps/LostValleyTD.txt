@@ -1,0 +1,8 @@
+name = 'Lost Valley - Tower Defense'
+version = '1.0'
+author = 'Serious_Sim'
+description = 'A long time forgotten jungle valley where ancient temples were used for evil rituals.'
+
+extensions = { 'water_damage' : 0, 'zombie_debug' = 1, 'core_position' : [263, 240, 6], 'zombie_spawn_position' : [[214, 291, 54], [310, 188,54], [310, 292, 54], [213, 188, 54], [277, 89, 27], [239, 386, 41]] }
+
+
