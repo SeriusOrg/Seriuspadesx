@@ -4237,7 +4237,16 @@ struct Server::Impl {
             t = qq.get();
         }
         if (!t || best < static_cast<float>(spitter.min_range)) return;
-        const Vec3 aim = was_at(t->id, spitter.lag);
+        Vec3 aim = was_at(t->id, spitter.lag);
+        // The arc is owed the ground the old place stood on, not the
+        // head the ring reads: a burst solved onto the head pops in
+        // the open air beside the ears - the pool paints nothing, and
+        // only the splash lands. A still pair of feet was soaking in
+        // a hurt with nothing on the ground to say why. The aim walks
+        // down to the block those feet stood on, and the burst meets
+        // it face to face at the end of the ride.
+        const int stand_z = static_cast<int>(std::floor(aim.z + 2.25f));
+        aim.z = static_cast<float>(stand_z + 1.5f);
         // The ride: the stand stands off now, so the arc is the show, slow
         // enough to watch and step aside from. The pace asks its own
         // seconds - thirty blocks at ten a second ride three of them,
@@ -4263,12 +4272,12 @@ struct Server::Impl {
         // step of the sim itself - the same step every client
         // walks. The face it meets holds the burst: the ground the
         // person stands beside, the wall stood on the way. What
-        // never meets the world rides out its seconds and comes
-        // apart in the sky, and the paint lands only where the
-        // ground stood, so a bolt apart in the air paints nothing.
+        // never meets the world was aimed at a body mid leap, and
+        // the drop below the burst still owes the paint its place.
         Vec3 at_pos = src;
         Vec3 at_vel = vel;
         float rode = flight;
+        bool touched = false;
         for (int tick = 1; tick <= 240; ++tick) {
             const float left =
                 flight - static_cast<float>(tick - 1) * nade::kTickDt;
@@ -4287,8 +4296,24 @@ struct Server::Impl {
             if (phys_map.solid(lx, ly, lz)) {
                 at_pos = from;
                 rode = static_cast<float>(tick) * nade::kTickDt;
+                touched = true;
                 break;
             }
+        }
+        // A ride that never met the world was aimed at a body mid
+        // leap, and no puddle holds in the open sky: the burst owes
+        // its paint to the ground it flew over, so the column under
+        // it answers and the top of its solid takes the landing the
+        // arc just missed by a stride. Sky to the bottom of the map
+        // keeps the pop where it fell, and the paint says nothing.
+        if (!touched) {
+            const int gx = static_cast<int>(std::floor(at_pos.x));
+            const int gy = static_cast<int>(std::floor(at_pos.y));
+            int gz = static_cast<int>(std::floor(at_pos.z)) + 1;
+            while (gz < 64 && !phys_map.solid(gx, gy, gz))
+                ++gz;
+            if (gz < 64)
+                at_pos.z = static_cast<float>(gz);
         }
         // The reading written on the landing: the distance it fell
         // from the aim it was owed. Close, the line held, and the
