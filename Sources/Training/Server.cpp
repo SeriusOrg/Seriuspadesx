@@ -33,6 +33,7 @@
 #include <mutex>
 #include <random>
 #include <thread>
+#include <utility>
 #include <vector>
 
 namespace host {
@@ -1371,6 +1372,16 @@ struct Server::Impl {
     std::unique_ptr<horde::Horde> horde;
     horde::Phase horde_told = horde::Phase::Prep;
     int horde_wave_told = 0;
+    // The record book: the best wave a map has stood, kept in
+    // a file beside the server - one line a map, the same place
+    // the tuning file stands - and read again at every start of
+    // a world. A bare page holds no line: the first wave that
+    // rises writes the first one.
+    std::vector<std::pair<std::string, int>> score_book;
+    std::string score_own;   // the name this page owns its line
+    int score_best = -1;
+    int score_stand = -1; // the best this run began against
+    bool score_told = false; // the fall of the old best, said once
     double core_alarm_at = 0.0;   // "under attack": one line every few seconds
     // The packs: one per spawn point, a single path each - the last joined
     // zombie of a point is the one the next of its pack follows.
@@ -2108,6 +2119,137 @@ struct Server::Impl {
     Vec3 turret_muzzle(const Turret& t) const {
         return Vec3{static_cast<float>(t.x) + 0.5f, static_cast<float>(t.y) + 0.5f,
                     static_cast<float>(t.z) - 1.0f};
+    }
+
+    // The record book of the tower defense: the best wave each map
+    // has stood, one line a map in towerdefense_scores.txt, kept beside
+    // the server where the tuning file stands and read whole again at
+    // every start of a world. A map owns its line by the name the map
+    // menu knows - the file sans folder and suffix - a map played
+    // straight off the disk names itself the same way, the course the
+    // paks carry when no map is named keeps the name it ships with,
+    // and the bare course the game draws when there is none of them
+    // keeps a word of its own, that no two pages share a line.
+    std::string score_name_of() const {
+        const std::string* own = &cfg.map_name;
+        if (own->empty() && !cfg.map_file.empty()) own = &cfg.map_file;
+        std::string name;
+        if (own->empty()) {
+            name = cfg.map_data.empty() ? "TheCourse"
+                                       : "Termina_FieldsTD";
+        } else {
+            const size_t slash = own->rfind('/');
+            const size_t dot = own->rfind('.');
+            const size_t from = slash == std::string::npos ? 0 : slash + 1;
+            size_t till = own->size();
+            if (dot != std::string::npos && dot > from) till = dot;
+            if (till > from) name = own->substr(from, till - from);
+        }
+        if (name.empty()) name = "TheCourse";
+        for (char& c : name)
+            if (std::isalnum(static_cast<unsigned char>(c)) == 0 &&
+                c != '_' && c != '-')
+                c = '_';
+        return name;
+    }
+
+    // The book opens with the world: a line a map and its best wave,
+    // said plain - the first word the name, the second the count, and
+    // any line that says less skipped without a word, a doubled name
+    // keeping the bigger of its counts. No book at all, or one the
+    // world cannot read, starts the page bare: the record is a
+    // welcome the book owes nobody.
+    void load_score_book() {
+        score_book.clear();
+        score_best = -1;
+        score_told = false;
+        score_own = score_name_of();
+        std::ifstream in("towerdefense_scores.txt", std::ios::binary);
+        if (!in) return;
+        const std::string text((std::istreambuf_iterator<char>(in)),
+                               std::istreambuf_iterator<char>());
+        size_t from = 0;
+        while (from < text.size()) {
+            const size_t nl = text.find('\n', from);
+            std::string line = nl == std::string::npos
+                ? text.substr(from) : text.substr(from, nl - from);
+            from = nl == std::string::npos ? text.size() : nl + 1;
+            for (const char mark : {'#', ';'}) {
+                const size_t at = line.find(mark);
+                if (at != std::string::npos) line.resize(at);
+            }
+            const size_t name_at = line.find_first_not_of(" \t\r");
+            if (name_at == std::string::npos) continue;
+            const size_t name_till = line.find_first_of(" \t\r", name_at);
+            if (name_till == std::string::npos) continue;
+            const std::string name =
+                line.substr(name_at, name_till - name_at);
+            const size_t wave_at =
+                line.find_first_not_of(" \t\r", name_till);
+            if (wave_at == std::string::npos) continue;
+            const long wave =
+                std::strtol(line.c_str() + wave_at, nullptr, 10);
+            if (wave <= 0) continue;
+            bool placed = false;
+            for (auto& slot : score_book)
+                if (slot.first == name) {
+                    placed = true;
+                    if (wave > slot.second) slot.second = wave;
+                }
+            if (!placed)
+                score_book.push_back({name, static_cast<int>(wave)});
+        }
+        for (const auto& slot : score_book)
+            if (slot.first == score_own) score_best = slot.second;
+        score_stand = score_best;
+        if (score_best > 0)
+            log("the record book holds wave %d on %s",
+                score_best, score_own.c_str());
+    }
+
+    // The book writes whole, every line a map folded back in it
+    // again. A book the world cannot write costs a line and nothing
+    // else: the run keeps its word in mind either way, and the next
+    // world reads whatever the last one left standing.
+    void save_score_book() {
+        std::ofstream out("towerdefense_scores.txt",
+                          std::ios::binary | std::ios::trunc);
+        if (!out) {
+            log("the record book cannot be written");
+            return;
+        }
+        out << "# The tower defense record book: one line a map, its\n";
+        out << "# best wave, kept beside the server, the same place as\n";
+        out << "# the tuning file. A line here the game does not say may\n";
+        out << "# live here as well.\n";
+        for (const auto& slot : score_book)
+            out << slot.first << ' ' << slot.second << '\n';
+    }
+
+    // A wave the run stands past the book is a record the moment it
+    // rises, and the page turns then and there - whatever end the run
+    // comes to later, the waves it won stay won. The fall of a best
+    // that stood before this run is said to the world the first time
+    // this run alone, against the page as the run opened it; past it
+    // the book takes its leaves in quiet.
+    void note_score_wave(int wave) {
+        if (wave <= 0 || wave <= score_best) return;
+        if (score_stand >= 0 && !score_told) {
+            char text[96];
+            std::snprintf(text, sizeof text,
+                          "Wave %d: the record falls.", wave);
+            system_chat(text);
+            score_told = true;
+        }
+        score_best = wave;
+        bool placed = false;
+        for (auto& slot : score_book)
+            if (slot.first == score_own) {
+                placed = true;
+                slot.second = wave;
+            }
+        if (!placed) score_book.push_back({score_own, wave});
+        save_score_book();
     }
 
     // towerdefense.toml beside the server, seen again at every start of
@@ -4915,6 +5057,7 @@ struct Server::Impl {
                                               special_due.size()));
                         }
                         system_chat(text);
+                        note_score_wave(horde->wave());
                     }
                     break;
                 case horde::Phase::Intermission: {
@@ -4942,6 +5085,14 @@ struct Server::Impl {
                     break;
                 case horde::Phase::Defeat:
                     system_chat("The core has fallen. Defeat.");
+                    if (score_best > 0) {
+                        char page[96];
+                        std::snprintf(page, sizeof page,
+                                      "The record book holds wave %d"
+                                      " on this map.",
+                                      score_best);
+                        system_chat(page);
+                    }
                     trail_resend_next = 0.0;   // and on defeat no less: the war is over
                     break;
                 case horde::Phase::Prep:
@@ -6565,6 +6716,14 @@ bool Server::start(std::string& err) {
     if (s.horde) {
         s.horde->restart(s.world_time);
         s.system_chat("Build while it is quiet: the first wave comes in twenty seconds.");
+        s.load_score_book();
+        if (s.score_best > 0) {
+            char page[96];
+            std::snprintf(page, sizeof page,
+                          "The record book holds wave %d on this map.",
+                          s.score_best);
+            s.system_chat(page);
+        }
     }
     s.log("training course on 127.0.0.1:%u, %d world updates a second",
           static_cast<unsigned>(s.cfg.port), s.cfg.update_rate);

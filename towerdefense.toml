@@ -4,7 +4,8 @@
 # is skipped; the file itself is optional - without it the guns stand
 # on the defaults below, the numbers the fork grew up with. Comments
 # run from # or ; to the end of the line. Sections are named in
-# [brackets]; what the server reads today is [turrets] and [economy].
+# [brackets]; what the server reads today is [turrets], [economy] and
+# [specials].
 # Values are numbers, or lists of numbers in brackets, one entry per
 # sentry level, level 1 to 3.
 
@@ -60,13 +61,21 @@ upgrade2_price = 30
 # taking it down returns.
 turret_refund = 70
 
-# The brutes of the horde, the specials of the waves. Each name reads its
-# own words: the first wave it stands in; the chance by wave and the extra
-# one every so many waves (a brute of the chance), or the pair and trio
-# waves the count of its group grows by (a brute of the count: the tank
-# and the healer); and the Zedcred its kill pays over the grunt rate. The
-# two bullies of the count stand apart before healer_with_tank_wave: one
-# of them a wave, never both.
+# The brutes of the horde, the specials of the waves. Each name reads
+# its own words: the first wave it stands in, and the Zedcred its kill
+# pays over the grunt rate. A brute of the chance rolls a d100 for its
+# place, the chance itself climbing chance_grow of a notch a wave; the
+# rolls stand another one up from rolls_wave on, and one more every
+# rolls_every waves past it. A brute of the count stands by count
+# instead: one wave each every_wave - and from grow_wave on, every
+# wave, one more standing each grow_every waves, held at the cap
+# grows_to. The tank keeps keeps of every hurt, in percent: it stands
+# all but that share of each volley. The healer walks behind a walker
+# and never leads, mends the worst hurt of the walking dead within
+# healer_reach blocks at the pace of a second level gun, holds the
+# tank its own waves until healer_with_tank_wave and walks beside it
+# from it on. The breaker digs its road a stroke every breaker_stroke
+# seconds, three wide and four high.
 
 [specials]
 
@@ -75,8 +84,8 @@ turret_refund = 70
 # soaked where they stand, the moving walk out of the landing. The
 # bolt bursts at the touch - the ground it lands on, the face of a
 # wall stood on the way - and paints a green pool acid_pool blocks
-# around, a zone of peril the whole acid_melt seconds it holds:
-# the paint burns whoever stands their ground inside it for
+# around, a zone of peril the whole acid_melt seconds it holds: the
+# paint burns whoever stands their ground inside it for
 # acid_to_people of a grenade hurt a beat, and the ground falls away
 # a cell at a time once the clock runs out. Its teeth answer nobody:
 # the band is its ground. A person walking in under the range rides
@@ -85,10 +94,14 @@ turret_refund = 70
 # spit_speed blocks a second - slower rides climb higher, for a
 # stand-off asks its seconds (thirty blocks at ten a second ride
 # three of them, topping some thirty-six) - and a breath leaves the
-# brute every spit_every seconds.
-spitter_first_wave = 3
-spitter_chance = 25
-spitter_extra_every = 10
+# brute every spit_every seconds. It stands one wave in two from
+# spitter_first_wave until its grow wave, one more standing each
+# spitter_grow_every waves from there, held at spitter_grows_to.
+spitter_first_wave = 5
+spitter_every_wave = 2
+spitter_grow_wave = 10
+spitter_grow_every = 5
+spitter_grows_to = 7
 spitter_bounty = 5
 spitter_spit_every = 2.5
 spitter_spit_range = 30
@@ -99,28 +112,32 @@ spitter_acid_to_people = 0.15
 spitter_acid_melt = 5.0
 spitter_acid_pool = 1
 
-# The Tank, the blue one. Its own model is to come: it wears the plain
-# Zombie set until then.
-tank_first_wave = 5
-tank_pair_wave = 10
-tank_trio_wave = 20
+# The Tank, the blue one, in the ZombieTank set. It walks the grunts
+# walk, in their packs - only a tenth of every volley ever lands.
+tank_first_wave = 3
+tank_keeps = 10
 tank_bounty = 10
 
-# The Healer, the purple one.
-healer_first_wave = 5
-healer_pair_wave = 10
-healer_trio_wave = 20
+# The Healer, the purple one: a walker of the pack that never leads,
+# mending the walking dead around it.
+healer_first_wave = 10
 healer_bounty = 8
-healer_with_tank_wave = 30
+healer_with_tank_wave = 20
+
+# The reach of the mender, in blocks, and the pace of the breaker
+# stroke, in seconds.
+healer_reach = 20.0
+breaker_stroke = 1.5
 
 # The Leaper, the red one.
-leaper_first_wave = 10
-leaper_chance = 40
-leaper_extra_every = 15
+leaper_first_wave = 7
+leaper_chance = 30
+leaper_chance_grow = 3
+leaper_rolls_wave = 12
+leaper_rolls_every = 3
 leaper_bounty = 6
 
-# The Breaker, the yellow one.
+# The Breaker, the yellow one, on its straight road to the core.
 breaker_first_wave = 8
 breaker_chance = 60
-breaker_extra_every = 8
 breaker_bounty = 7
