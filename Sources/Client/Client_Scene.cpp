@@ -65,6 +65,9 @@ DEFINE_SPADES_SETTING(cg_debugBlockCursor, "0");
 DEFINE_SPADES_SETTING(cg_debugPlayerHitboxes, "0");
 // One line and a wire box per flying grenade: the spitball hunt.
 DEFINE_SPADES_SETTING(cg_spitDebug, "0");
+// The spit rides the arc this many times the size a grenade flies:
+// big enough to read across the field, held in the console to tune.
+DEFINE_SPADES_SETTING(cg_spitScale, "2.5");
 
 SPADES_SETTING(cg_ragdoll);
 SPADES_SETTING(cg_hurtScreenEffects);
@@ -591,6 +594,8 @@ namespace spades {
 				return; // work-around for water refraction problem
 
 			Handle<IModel> model = renderer->RegisterModel("Models/Weapons/Grenade/Grenade.kv6");
+			const float usualScale = 0.03F;
+			float scale = usualScale;
 			const char *skinSaid = "the usual skin";
 			// A thrower drawn in a model set of its own flies its set
 			// grenade too. The file the set lays out for the held one
@@ -619,6 +624,15 @@ namespace spades {
 							if (own) {
 								model = own;
 								skinSaid = "the set skin";
+								// The spit flies big enough to read
+								// across the field: the set skin
+								// rides the size the console says,
+								// grenades of nobody in a set
+								// keeping their own.
+								const float said =
+								  (float)cg_spitScale;
+								if (said > 0.0F)
+									scale = usualScale * said;
 							}
 					}
 				}
@@ -631,7 +645,7 @@ namespace spades {
 			ModelRenderParam param;
 			param.matrix = Matrix4::Translate(position);
 			param.matrix = param.matrix * g.GetOrientation().ToRotationMatrix();
-			param.matrix = param.matrix * Matrix4::Scale(0.03F);
+			param.matrix = param.matrix * Matrix4::Scale(scale);
 			renderer->RenderModel(*model, param);
 
 			// While cg_spitDebug rides, a wire box the size of a block rides
