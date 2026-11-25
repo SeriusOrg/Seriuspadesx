@@ -122,13 +122,12 @@ struct Config {
     double spawn_interval = 0.25;
     // The rounds keep coming while the ramp still has something new to
     // show: the points all open by ten, and the packs grow on past the
-    // cap. The debugging season is over and the campaign is back: the
-    // waves end at twenty, and the last wave, once cleared, is the
-    // Victory the balance phase hands the game. Zero still says the
-    // other thing - whatever falls, another wave stands up - and stays
-    // the number the tests lean on when they ask for the rain that
-    // never ends.
-    int wave_count_max = 20;
+    // cap. The campaign never ends now: whatever falls, another wave
+    // stands up, and no last wave hands the game its Victory. A number
+    // keeps the old campaign - a run that wants an end sets it - and
+    // zero stays the number the tests lean on when they ask for the
+    // rain that never ends.
+    int wave_count_max = 0;
     int core_hp = 150;
     // How much of the core's health a cleared wave mends back.
     int core_mend = 25;

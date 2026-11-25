@@ -237,6 +237,14 @@ constexpr float kAcidCrumble = 0.12f;
 // wore and no band of the way in ever wears a splash for its own.
 constexpr uint8_t kAcidBeds = 10;
 constexpr uint8_t kAcidBedFirst = 255 - kAcidBeds;
+// The healer's vapour beside the acid's: beds of pale blue laid at the
+// feet of the walking dead its reach holds, thinned a blink after the
+// beat refreshes them. Their band sits under the acid's own ten, clear
+// of the ids the route and the landings share.
+constexpr float kHealBeat = 0.5f;
+constexpr uint8_t kHealBeds = 30;
+constexpr uint8_t kHealBedFirst = kAcidBedFirst - kHealBeds;
+constexpr uint8_t kHealRed = 0xA8, kHealGreen = 0xC8, kHealBlue = 0xFF;
 
 // The catch of the pack: a follower runs once its leader stands more than
 // this far ahead. Every heel of the line walks at the same pace as the one
@@ -257,6 +265,9 @@ constexpr float kPackCatch = 0.8f;
 // the common answer every walker already owes.
 constexpr float kHuntSprint = 6.0f;
 constexpr float kBreakerCharge = 24.0f;
+// The span a shadow keeps: a healer with nobody to follow takes its
+// place behind the walker nearest it inside this many blocks.
+constexpr float kHealJoin = 24.0f;
 // The stand of the Spitter: the acid works from its own ground, and the
 // walker keeps this stand off the hunted, in and out of the field,
 // while the slow arc does the closing - a ride the hunted watches come
@@ -542,6 +553,9 @@ struct Player {
 
     bool alive = false;
     int hp = 0;
+    // The dust of the hurts a tank stands: the share a volley pays in
+    // rounds, come whole a whole at a time.
+    double hide_dust = 0.0;
     int grenades = 3, blocks = 50;
     Gun gun;
     physics::Body body;
@@ -725,12 +739,15 @@ struct EconomyTuning {
 };
 
 // The brutes of the horde, five specials, each its own face and its own
-// toll. A special with a chance set rolls it once a wave for a place, and
-// again every extra_every waves past its first for a second; one with pair
-// waves set stands one from its first wave, two from the pair wave, three
-// from the trio wave. The healer and the tank stand apart until the wave
-// the tuning says, never both on one wave before it. towerdefense.toml
-// says all of it again, by the same word as the table here.
+// toll. A special with a chance set rolls its percentile once a wave for
+// a place - the chance itself climbing a notch a wave - and the rolls
+// grow by the wave the tuning says. One with no chance stands by count:
+// one wave each every_wave, and every wave from the wave its growth
+// starts, when one more stands each so many waves, held at a cap. The
+// tank keeps a share of each hurt standing; the healer holds the tank's
+// waves until the wave the tuning names and walks beside it from there.
+// towerdefense.toml says all of it again, by the same word as the table
+// here.
 enum SpecialKind { kSpitter = 0, kTank, kHealer, kLeaper, kBreaker,
                    kSpecialCount };
 struct SpecialTuning {
@@ -739,9 +756,14 @@ struct SpecialTuning {
     int bounty = 0;          // the Zedcred its kill pays over the grunt rate
     int first_wave = 0;      // the first wave it may stand in
     int chance = 0;          // percent by the wave, when it has a chance
-    int extra_every = 0;     // every so many waves a second one may roll
-    int pair_wave = 0;       // its group grows to two from this wave on
-    int trio_wave = 0;       // and to three from this wave on
+    int chance_grow = 0;     // the chance climbs this much a wave
+    int rolls_wave = 0;      // two chances a wave from this wave on
+    int rolls_every = 0;     // and one chance more each so many waves
+    int every_wave = 0;      // 0: every wave; n: one wave each n
+    int grow_wave = 0;       // every wave from here, the count climbing
+    int grow_every = 0;      // one more standing each so many waves
+    int grows_to = 0;        // the growth holds at this count
+    int keeps = 100;         // the share of a hurt it stands, its hide
 };
 
 // The breath of the Spitter, as towerdefense.toml says it: how often a
@@ -814,6 +836,14 @@ struct Server::Impl {
     // The pair of vapour beds the next landing wears, walked round the
     // band each time a spit breaks open.
     uint8_t acid_smoke_next = 0;
+    // The healer's own clocks and words: the beat its mend and its beds
+    // ride, the beds walked a body a beat, the reach it reads the hurt
+    // in; and the breaker's own pace of stroke, apart from the grunt
+    // spade its errands ride.
+    double heal_beat_at = 0.0;
+    uint8_t heal_bed_next = 0;
+    float healer_reach = 20.0f;
+    double breaker_stroke = 1.5;
     // Where the people were, a ring per slot: a sample every kPastBeat,
     // held kPastKeep seconds. The lag of a spit reads a place a body
     // stood this long back, and only the still are caught where they
@@ -1375,13 +1405,13 @@ struct Server::Impl {
     // specials of a wave from it. The tank wears the plain Zombie set as
     // a placeholder, until its own model stands.
     SpecialTuning specials[kSpecialCount] = {
-        {"Spitter", 65, 5, 3, 25, 10, 0, 0},
-        {"Tank", 69, 10, 5, 0, 0, 10, 20},
-        {"Healer", 67, 8, 5, 0, 0, 10, 20},
-        {"Leaper", 66, 6, 10, 40, 15, 0, 0},
-        {"Breaker", 68, 7, 8, 60, 8, 0, 0},
+        {"Spitter", 65, 5, 5, 0, 0, 0, 0, 2, 10, 5, 7, 100},
+        {"Tank", 69, 10, 3, 0, 0, 0, 0, 0, 0, 0, 0, 10},
+        {"Healer", 67, 8, 10, 0, 0, 0, 0, 0, 0, 0, 0, 100},
+        {"Leaper", 66, 6, 7, 30, 3, 12, 3, 0, 0, 0, 0, 100},
+        {"Breaker", 68, 7, 8, 60, 0, 0, 0, 0, 0, 0, 0, 100},
     };
-    int healer_tank_together = 30;  // both bullies stand from this wave on
+    int healer_tank_together = 20;  // both bullies stand from this wave on
     // The specials the wave rides: one rides each due tread, at the place
     // the tread names, until the queue is spent - the dead of a wave walk
     // in single file, and a brute walks beside the grunts, not instead.
@@ -1774,6 +1804,18 @@ struct Server::Impl {
     }
 
     void set_hp(Player& p, int value, Player* by, int kill_type, const Vec3* source) {
+        // The tank's hide: each hurt leaves it standing a share of
+        // itself, and the rounds a volley pays whole come a tenth at a
+        // time, gathering on the hide until a whole rounds off. A heal
+        // reads the other way and rides through untouched.
+        if (p.zombie && p.brute == kTank && value < p.hp) {
+            const double owed = p.hide_dust +
+                (p.hp - value) *
+                specials[static_cast<size_t>(kTank)].keeps / 100.0;
+            const int whole = static_cast<int>(owed);
+            p.hide_dust = owed - static_cast<double>(whole);
+            value = p.hp - whole;
+        }
         p.hp = std::max(0, std::min(100, value));
         if (p.hp <= 0) {
             kill(p, by, kill_type);
@@ -2173,12 +2215,22 @@ struct Server::Impl {
                         s.first_wave = std::max(1, n);
                     } else if (field == "chance") {
                         s.chance = std::min(100, std::max(0, n));
-                    } else if (field == "extra_every") {
-                        s.extra_every = std::max(0, n);
-                    } else if (field == "pair_wave") {
-                        s.pair_wave = std::max(0, n);
-                    } else if (field == "trio_wave") {
-                        s.trio_wave = std::max(0, n);
+                    } else if (field == "chance_grow") {
+                        s.chance_grow = std::max(0, n);
+                    } else if (field == "rolls_wave") {
+                        s.rolls_wave = std::max(0, n);
+                    } else if (field == "rolls_every") {
+                        s.rolls_every = std::max(0, n);
+                    } else if (field == "every_wave") {
+                        s.every_wave = std::max(0, n);
+                    } else if (field == "grow_wave") {
+                        s.grow_wave = std::max(0, n);
+                    } else if (field == "grow_every") {
+                        s.grow_every = std::max(0, n);
+                    } else if (field == "grows_to") {
+                        s.grows_to = std::max(0, n);
+                    } else if (field == "keeps") {
+                        s.keeps = std::min(100, std::max(1, n));
                     } else if (kind == kSpitter && field == "_spit_every") {
                         spitter.every = std::max(0.1, number(value));
                     } else if (kind == kSpitter && field == "_spit_range") {
@@ -2203,6 +2255,11 @@ struct Server::Impl {
                     // The wave the two bullies of the count may share.
                     healer_tank_together = std::max(
                         0, static_cast<int>(number(value)));
+                } else if (key == "healer_reach") {
+                    healer_reach = std::max(
+                        4.0f, static_cast<float>(number(value)));
+                } else if (key == "breaker_stroke") {
+                    breaker_stroke = std::max(0.05, number(value));
                 }
                 continue;
             }
@@ -3524,8 +3581,8 @@ struct Server::Impl {
     // advice, no detour a cliff asks for, and falls are walked honestly
     // off every edge on the way. What stands on the line comes down: a
     // stair of one or two is hopped, and the rest is carved standing at
-    // the face, the focus column and its two mates, the two blocks tall
-    // a body asks, onto rock only, a stroke a dig seconds - the air
+    // the face, the focus column and its two mates, a cut four high at
+    // the walker's own pace of stroke, onto rock only - the air
     // rides along unharmed and the core holds against every cell, for
     // the teeth answer the core standing on its own ground, as they do
     // for any walker that arrives. The charge sprints while the march
@@ -3549,7 +3606,7 @@ struct Server::Impl {
             return;
         }
         if (!horde_cfg.dig ||
-            world_time < p.spade_at + horde_cfg.dig_seconds) return;
+            world_time < p.spade_at + breaker_stroke) return;
         // The stroke, standing at the face: the walker stops pressing
         // and works, mates onto rock only, never the core column, and
         // every voxel that comes off carries its own word to the wire.
@@ -3558,10 +3615,13 @@ struct Server::Impl {
         const int ly = fx - cx != 0 ? 1 : 0;
         bool stroked = false;
         std::vector<Cell> removed;
+        // The road it digs stands four high over the ground it walks:
+        // a body and a half of sky above the heads, so the whole of
+        // the wave behind it walks the road as clean as its digger.
         for (int i = -1; i <= 1; ++i) {
             const int bx = fx + lx * i;
             const int by = fy + ly * i;
-            for (int z = foot ? fz - 1 : fz; z <= fz; ++z) {
+            for (int z = fz - 3; z <= fz; ++z) {
                 if (!map.solid(bx, by, z)) continue;
                 if (core_column_cell(bx, by, z)) continue;
                 map.destroy_point(bx, by, z, &removed);
@@ -3579,8 +3639,33 @@ struct Server::Impl {
         if (stroked) {
             touched(removed, false);
             p.spade_at = world_time;
-            show_swing(p, horde_cfg.dig_seconds);
+            show_swing(p, breaker_stroke);
         }
+    }
+
+    // The healer never leads: with nobody to follow it takes its place
+    // behind the walker nearest it, inside the span a shadow keeps - or,
+    // alone on the field with nothing to shadow, it walks the field
+    // itself, a leader of nobody for as long as it stands alone. The
+    // pack it sheds finds a different head, so no walker ever walks
+    // behind a healer.
+    bool follow_the_near(Player& p) {
+        Player* shadow = nullptr;
+        float best = -1.0f;
+        for (auto& qq : players) {
+            if (!qq || !qq->zombie || !qq->alive || qq.get() == &p)
+                continue;
+            const float ddx = qq->body.pos.x - p.body.pos.x;
+            const float ddy = qq->body.pos.y - p.body.pos.y;
+            const float dd2 = ddx * ddx + ddy * ddy;
+            if (shadow == nullptr || dd2 < best) {
+                best = dd2;
+                shadow = qq.get();
+            }
+        }
+        if (shadow == nullptr || best > kHealJoin * kHealJoin) return false;
+        p.ahead_id = shadow->id;
+        return true;
     }
 
     // A zombie's mind: its pack walks one path - it holds at the heel of the
@@ -3820,7 +3905,12 @@ struct Server::Impl {
             } else if (p.brute == kBreaker) {
                 hand_pack_over(p);
                 breaker_tick(p, cx, cy, fz);
+            } else if (p.brute == kHealer && follow_the_near(p)) {
+                hand_pack_over(p);
+                // A walker stands in its shadow: the follower branch
+                // holds the healer at a heel from the next tick on.
             } else {
+                if (p.brute == kHealer) hand_pack_over(p);
             int tx = cx, ty = cy, tz = fz;
             // The field read from the footing - and when the feet are in
             // the air, or on a floor the walk has no opinion about, the
@@ -4491,8 +4581,9 @@ struct Server::Impl {
     void smoke_route(const std::vector<FrontRead>& fronts) {
         if (fronts.empty()) return;
         constexpr int kStride = 1;          // a bed a tread: the full pour, twice the spread
-        // ten beds of it held off the top for the acid's own vapour
-        constexpr int kBeds = 244;
+        // forty beds of it held off the top: the acid's ten, the
+        // healer's thirty
+        constexpr int kBeds = 214;
         constexpr uint16_t kStay = 7;       // 0.7 s it keeps coming: the heavier pour, one blink's worth and a little over
         constexpr uint8_t kThins = 2;       // 0.2 s the last of it takes to go: it leaves like it settles, slowly
         const int per = kBeds / static_cast<int>(fronts.size());   // the budget, split across the fronts the blink says
@@ -4528,20 +4619,21 @@ struct Server::Impl {
         }
     }
 
-    // The spit's landing says itself in vapour as well: a cloud of
-    // green breaks open where it struck and thins inside a blink, and
-    // the pool keeps a bed of green over its paint for the whole of
-    // the melt, so the peril reads with a breath over it and goes as
-    // the last of the blocks comes down. Both wear the acid's own
-    // green, neither hisses - a pool is loud enough as it is - and
-    // both ride the acid's own ten beds, said to every smoke the
-    // client claimed: a way read as paths wears these all the same.
-    void acid_vapour(const uint8_t id, const proto::SmokeStyle style,
-                     const Vec3& at, const uint8_t radius,
-                     const uint16_t stay, const uint8_t fade) {
+    // Vapour on a bed id: the spit's landing wears it twice - a cloud
+    // of green that breaks open where it struck and thins inside a
+    // blink, and a bed of green held over its paint for the whole of
+    // the melt - and the healer lays its pale blue at the feet of the
+    // dead it works among. Neither hisses, and both ride bands held
+    // off the top of the client's own bed budget, said to every smoke
+    // the client claimed: a way read as paths wears these all the same.
+    void vapour(const uint8_t id, const proto::SmokeStyle style,
+                const Vec3& at, const uint8_t radius, const uint8_t red,
+                const uint8_t green, const uint8_t blue,
+                const uint8_t opacity, const uint16_t stay,
+                const uint8_t fade) {
         ByteWriter bw;
-        proto::write_smoke(bw, id, style, at, radius, 0x5A, 0xFF, 0x3C,
-                           0xE8, stay, fade, static_cast<uint8_t>(0));
+        proto::write_smoke(bw, id, style, at, radius, red, green, blue,
+                           opacity, stay, fade, static_cast<uint8_t>(0));
         for (auto& o : players)
             if (o && o->peer && !o->loading && o->ext_smoke &&
                 o->playing()) send(*o, bw);
@@ -4683,7 +4775,8 @@ struct Server::Impl {
     // tables: one or more brutes queue here and ride the due treads of
     // the wave, one by one, beside the grunts. The two bullies of the
     // count, the tank and the healer, stand apart on the waves before
-    // the wave the tuning names: one of them, never both.
+    // the wave the tuning names: below it the healer keeps the wave
+    // the tank would have walked, and from it on they walk as one.
     void plan_specials() {
         special_due.clear();
         const int wave = horde->wave();
@@ -4694,25 +4787,48 @@ struct Server::Impl {
             if (wave < s.first_wave) continue;
             int want = 0;
             if (s.chance > 0) {
-                if (std::uniform_int_distribution<int>(0, 99)(rng) <
-                    s.chance)
-                    want = 1;
-                if (s.extra_every > 0 && want > 0 &&
-                    (wave - s.first_wave) % s.extra_every == 0 &&
-                    std::uniform_int_distribution<int>(0, 99)(rng) < s.chance)
-                    ++want;
+                // The chance kinds: a percentile rolled a place a wave,
+                // the percentile itself climbing a notch a wave, and
+                // the rolls growing by the tuning - two chances a wave
+                // from the rolls wave, one more each rolls_every after.
+                const int pct = std::min(100, s.chance +
+                    s.chance_grow * (wave - s.first_wave));
+                int rolls = 1;
+                if (s.rolls_wave > 0 && s.rolls_every > 0 &&
+                    wave >= s.rolls_wave)
+                    rolls = 2 + (wave - s.rolls_wave) / s.rolls_every;
+                for (int roll = 0; roll < rolls; ++roll)
+                    if (std::uniform_int_distribution<int>(0, 99)(rng) <
+                        pct)
+                        ++want;
             } else {
+                // The count kinds: one on its first wave and each
+                // every_wave after it, and every wave from the grow_wave
+                // on, one more standing each grow_every, held at the
+                // cap the tuning says.
+                const bool stands =
+                    (s.grow_wave > 0 && wave >= s.grow_wave) ||
+                    s.every_wave <= 0 ||
+                    (wave - s.first_wave) % s.every_wave == 0;
+                if (!stands) continue;
                 want = 1;
-                if (s.pair_wave > 0 && wave >= s.pair_wave) ++want;
-                if (s.trio_wave > 0 && wave >= s.trio_wave) ++want;
+                if (s.grow_wave > 0 && wave >= s.grow_wave &&
+                    s.grow_every > 0)
+                    want = std::min(s.grows_to,
+                                   2 + (wave - s.grow_wave) / s.grow_every);
             }
-            if (k == kHealer && want > 0 && wave < healer_tank_together) {
-                bool tank = false;
-                for (const int j : special_due)
-                    if (j == kTank)
-                        tank = true;
-                if (tank)
-                    want = 0;   // the tank stands: the healer holds this wave
+            // The healer holds the tank's waves: below the wave the
+            // tuning names, whenever the healer keeps a wave the tank
+            // walks none, for its place stands taken.
+            if (k == kHealer && want > 0 &&
+                wave < healer_tank_together) {
+                for (size_t i = 0; i < special_due.size();) {
+                    if (special_due[i] == kTank)
+                        special_due.erase(
+                            special_due.begin() + static_cast<long>(i));
+                    else
+                        ++i;
+                }
             }
             for (int j = 0; j < want; ++j)
                 special_due.push_back(k);
@@ -4876,8 +4992,18 @@ struct Server::Impl {
                 // A brute of the queue rides the tread beside its grunt,
                 // at the same corner, until the wave tells no more.
                 if (!special_due.empty()) {
-                    add_zombie(s, special_due.front());
+                    const int rode = special_due.front();
+                    add_zombie(s, rode);
                     special_due.erase(special_due.begin());
+                    // The healer walks the tank's own pack once the
+                    // tuning lets both stand: the same tread, the same
+                    // corner, never a pack apart.
+                    if (rode == kTank && !special_due.empty() &&
+                        special_due.front() == kHealer &&
+                        horde->wave() >= healer_tank_together) {
+                        add_zombie(s, special_due.front());
+                        special_due.erase(special_due.begin());
+                    }
                 }
             }
         }
@@ -5132,6 +5258,7 @@ struct Server::Impl {
         }
         acid_melt_tick();
         acid_pool_tick();
+        healer_tick();
     }
 
     void explode(const Grenade& g) {
@@ -5194,10 +5321,11 @@ struct Server::Impl {
             kAcidBedFirst + acid_smoke_next * 2);
         acid_smoke_next = static_cast<uint8_t>(
             (acid_smoke_next + 1) % (kAcidBeds / 2));
-        acid_vapour(bed, proto::SmokeStyle::Cloud,
-                    Vec3{static_cast<float>(x) + 0.5f,
-                         static_cast<float>(y) + 0.5f,
-                         static_cast<float>(z)}, 2, 7, 4);
+        vapour(bed, proto::SmokeStyle::Cloud,
+               Vec3{static_cast<float>(x) + 0.5f,
+                    static_cast<float>(y) + 0.5f,
+                    static_cast<float>(z)}, 2,
+               0x5A, 0xFF, 0x3C, 0xE8, 7, 4);
         // The pool: the cells it lands in, the one under them, one ring
         // more around for each block of reach.
         std::vector<Cell> pool;
@@ -5245,12 +5373,13 @@ struct Server::Impl {
         // And its breath over the paint: a bed of green kept at the
         // pool for the whole of the melt, fading as the last of the
         // blocks comes down.
-        acid_vapour(static_cast<uint8_t>(bed + 1),
-                    proto::SmokeStyle::Ground,
-                    Vec3{static_cast<float>(x) + 0.5f,
-                         static_cast<float>(y) + 0.5f,
-                         static_cast<float>(z) - 0.35f},
-                    2, static_cast<uint16_t>(spitter.melt * 10.0), 8);
+        vapour(static_cast<uint8_t>(bed + 1),
+               proto::SmokeStyle::Ground,
+               Vec3{static_cast<float>(x) + 0.5f,
+                    static_cast<float>(y) + 0.5f,
+                    static_cast<float>(z) - 0.35f}, 2,
+               0x5A, 0xFF, 0x3C, 0xE8,
+               static_cast<uint16_t>(spitter.melt * 10.0), 8);
         int laid_cells = 0;
         for (const Cell& c : pool) {
             map.set(c.x, c.y, c.z, kAcidColour);
@@ -5325,6 +5454,58 @@ struct Server::Impl {
             if (in_pool)
                 set_hp(*qq, qq->hp - hurt, nullptr, kGrenadeKill,
                        &qq->body.pos);
+        }
+    }
+
+    // The healer's work, at the pool's own beat: every walker standing
+    // in its reach wears a bed of pale blue at its feet, thinned inside
+    // a blink and kept fresh while the healer holds its ground, and
+    // the walker worst hurt among them is mended by the pace of a
+    // second level sentry each beat - the same gun everyone buys, the
+    // same word of it, tuned with it. A healer mends no healer of its
+    // own standing, that two of them read each other whole.
+    void healer_tick() {
+        if (world_time < heal_beat_at) return;
+        heal_beat_at = world_time + static_cast<double>(kHealBeat);
+        bool any_healer = false;
+        for (auto& hp : players) {
+            if (!hp || !hp->alive || !hp->zombie || hp->brute != kHealer)
+                continue;
+            any_healer = true;
+            break;
+        }
+        if (!any_healer) return;
+        const float reach2 = healer_reach * healer_reach;
+        const int mend = static_cast<int>(
+            turret_cfg.damage[1] /
+            static_cast<double>(turret_cfg.interval[1]) * kHealBeat);
+        for (auto& hp : players) {
+            if (!hp || !hp->alive || !hp->zombie || hp->brute != kHealer)
+                continue;
+            Player* worst = nullptr;
+            for (auto& qq : players) {
+                if (!qq || !qq->zombie || !qq->alive) continue;
+                const float ddx = qq->body.pos.x - hp->body.pos.x;
+                const float ddy = qq->body.pos.y - hp->body.pos.y;
+                if (ddx * ddx + ddy * ddy > reach2) continue;
+                vapour(static_cast<uint8_t>(
+                           kHealBedFirst + heal_bed_next),
+                       proto::SmokeStyle::Ground,
+                       Vec3{std::floor(qq->body.pos.x) + 0.5f,
+                            std::floor(qq->body.pos.y) + 0.5f,
+                            std::floor(qq->body.pos.z + 2.25f) + 0.65f},
+                       1, kHealRed, kHealGreen, kHealBlue, 0xE8, 5, 3);
+                heal_bed_next = static_cast<uint8_t>(
+                    (heal_bed_next + 1) % kHealBeds);
+                // The pick reads no healer standing: a mender never
+                // mends a mender, itself or another.
+                if (qq->brute == kHealer) continue;
+                if (worst == nullptr || qq->hp < worst->hp)
+                    worst = qq.get();
+            }
+            if (worst != nullptr && worst->hp < 100 && mend > 0)
+                set_hp(*worst, std::min(100, worst->hp + mend),
+                       nullptr, kFallKill, nullptr);
         }
     }
 
