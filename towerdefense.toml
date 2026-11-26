@@ -97,14 +97,14 @@ turret_refund = 70
 # spit_speed blocks a second - slower rides climb higher, for a
 # stand-off asks its seconds (thirty blocks at ten a second ride
 # three of them, topping some thirty-six) - and a breath leaves the
-# brute every spit_every seconds. It stands one wave in two from
-# spitter_first_wave until its grow wave, one more standing each
-# spitter_grow_every waves from there, held at spitter_grows_to.
-spitter_first_wave = 5
-spitter_every_wave = 2
-spitter_grow_wave = 10
-spitter_grow_every = 5
-spitter_grows_to = 7
+# brute every spit_every seconds. It stands every wave from
+# spitter_first_wave, one more standing each spitter_grow_every waves
+# from spitter_grow_wave, held at spitter_grows_to when it says one.
+spitter_first_wave = 3
+spitter_every_wave = 0
+spitter_grow_wave = 4
+spitter_grow_every = 1
+spitter_grows_to = 0
 spitter_bounty = 5
 spitter_spit_every = 2.5
 spitter_spit_range = 30

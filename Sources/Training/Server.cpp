@@ -1478,7 +1478,7 @@ struct Server::Impl {
     // The tank wears the plain Zombie set as a placeholder, until its
     // own model stands.
     SpecialTuning specials[kSpecialCount] = {
-        {"Spitter", 65, 5, 5, 0, 0, 0, 0, 2, 10, 5, 7, 100},
+        {"Spitter", 65, 5, 3, 0, 0, 0, 0, 0, 4, 1, 0, 100},
         {"Tank", 69, 10, 3, 0, 0, 0, 0, 0, 3, 1, 0, 10},
         {"Healer", 67, 8, 10, 0, 0, 0, 0, 0, 0, 0, 0, 100},
         {"Leaper", 66, 6, 7, 40, 4, 10, 3, 0, 0, 0, 0, 100},
@@ -1800,6 +1800,23 @@ struct Server::Impl {
         }
         bw.write_cstring(p.name);
         broadcast(bw, true);
+        // The slot remembers a face: whoever is no walker stands
+        // where one may have stood, and a client that was told a
+        // face for the slot still draws it. So the team word is
+        // said at their every spawn - the word erases the held
+        // face, and the usual parts draw them again.
+        if (!p.zombie) {
+            ByteWriter outfits_bytes;
+            proto::write_set_outfit(outfits_bytes,
+                                    static_cast<uint8_t>(p.id),
+                                    static_cast<uint8_t>(255));
+            for (auto& c : players) {
+                if (!c || !c->ext_outfit || c->zombie || c->aim_bot)
+                    continue;
+                if (c->loading) c->saved.push_back(outfits_bytes.data);
+                else send(*c, outfits_bytes);
+            }
+        }
         if (!p.client_info) send_handshake(p);
         p.appeared_at = world_time;
         if (p.aim_bot) {
@@ -2160,12 +2177,17 @@ struct Server::Impl {
         players[id] = std::move(p);
         ++bot_count;
         spawn(*players[id]);
-        if (st)
-            dress_zombie(*players[id]);
+        // Every walker is told its face, the grunts no less than
+        // the brutes: the slot a grunt stands in may have worn a
+        // brute, and a face the clients still remember dresses
+        // the newcomer.
+        dress_zombie(*players[id]);
     }
-    // A special wears its own face: told at once to every client that
+    // A zombie wears its face: told at once to every client that
     // claimed the outfits, held for one still loading its world. The
-    // plain grunts wear the team word alone and are told nothing here.
+    // plain grunts are told their word here the same, for the slot a
+    // walker stands in may have worn another, and a face the clients
+    // still remember would dress the newcomer in it.
     void dress_zombie(Player& z) {
         ByteWriter outfits_bytes;
         proto::write_set_outfit(outfits_bytes,
@@ -5505,7 +5527,7 @@ struct Server::Impl {
                 // The count kinds: one on its first wave and each
                 // every_wave after it, and every wave from the grow_wave
                 // on, one more standing each grow_every - counted from
-                // the first wave the brute stands - held at the cap the
+                // the wave the growth begins - held at the cap the
                 // tuning says, when it says one at all.
                 const bool stands =
                     (s.grow_wave > 0 && wave >= s.grow_wave) ||
@@ -5516,10 +5538,10 @@ struct Server::Impl {
                 if (s.grow_wave > 0 && wave >= s.grow_wave &&
                     s.grow_every > 0) {
                     // The climb counts its steps from the wave the
-                    // brute first stood: one more each grow_every of
-                    // the way, and a grows_to of zero says the climb
-                    // never tops out.
-                    want = 1 + (wave - s.first_wave) / s.grow_every;
+                    // growth itself begins: one more each grow_every
+                    // of the way, and a grows_to of zero says the
+                    // climb never tops out.
+                    want = 1 + (wave - s.grow_wave) / s.grow_every;
                     if (s.grows_to > 0 && want > s.grows_to)
                         want = s.grows_to;
                 }
