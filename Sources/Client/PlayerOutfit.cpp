@@ -56,7 +56,6 @@ namespace spades {
 				  {PlayerOutfits::Caller, "ZombiePurple"},
 				  {PlayerOutfits::Breaker, "ZombieYellow"},
 				  {PlayerOutfits::Toppler, "ZombieTank"},
-				  {PlayerOutfits::Boomer, "ZombieBoomer"},
 				  {PlayerOutfits::Turret, "Turret"},       {PlayerOutfits::Projector, "Projector"},
 				  {PlayerOutfits::DishAntenna, "DishAntenna"},
 				  {PlayerOutfits::MastAntenna, "MastAntenna"},
@@ -81,8 +80,10 @@ namespace spades {
 		} // namespace
 
 		const std::string& PlayerOutfits::FolderOf(int outfit, int playerId) {
-			// The plain zombie: one of the grunts, the same one for a player id
-			if (outfit == Zombie)
+			// The plain zombie: one of the grunts, the same one for a player
+			// id. The boomer stands in the same grunts until its own model
+			// rises, told apart by the pink flare it walks under.
+			if (outfit == Zombie || outfit == Boomer)
 				return kGrunts[static_cast<unsigned>(playerId) % 3];
 			// An outfit with no art here (and the reserved numbers) is drawn as 0.
 			return NamedFolder(outfit);

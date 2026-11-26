@@ -877,15 +877,16 @@ struct Server::Impl {
     static constexpr int kPerchRise = 4;
     // The boomer's rounds: the first wave of them, how often they come,
     // and the share of the ramp's dead one stands; then the wick and
-    // its reach of the trigger, the blast and what it takes from a
-    // body standing in it, and from the core when it reaches it.
+    // its reach of the trigger, and what the burst takes from the
+    // core when it reaches it. The burst itself is the grenade's own,
+    // drawn whole from nade::blast_damage: the same box of reach, the
+    // same fall with distance, the same wall between the blast and
+    // the body.
     int boomer_wave_first = 6;
     int boomer_wave_every = 5;
     int boomer_wave_scale = 60;
     double boomer_fuse = 2.5;
     double boomer_arm = 10.0;
-    double boomer_blast = 6.0;
-    int boomer_hurt = 60;
     int boomer_core_hurt = 30;
     // A wick pressed against a wall lights after this long a stand.
     static constexpr double kBoomStuck = 1.0;
@@ -2549,11 +2550,6 @@ struct Server::Impl {
                     boomer_fuse = std::max(0.5, number(value));
                 } else if (key == "boomer_arm") {
                     boomer_arm = std::max(1.0, number(value));
-                } else if (key == "boomer_blast") {
-                    boomer_blast = std::max(1.0, number(value));
-                } else if (key == "boomer_hurt") {
-                    boomer_hurt = std::max(
-                        1, static_cast<int>(number(value)));
                 } else if (key == "boomer_core_hurt") {
                     boomer_core_hurt = std::max(
                         0, static_cast<int>(number(value)));
@@ -4105,26 +4101,24 @@ struct Server::Impl {
                     dug = true;
                 }
         if (dug) touched(removed, false);
-        // The bite: every body standing in the blast, the dead side's
-        // own as much as the people's, worn the worse the closer it
-        // stands - a boomer caught in a boomer's burst goes with it,
-        // the chain ending where the blast no longer reaches.
+        // The bite: the grenade's own blast, the same box of reach,
+        // the same fall with distance, the same wall between - each
+        // body it sees pays the grenade's own toll, dead side and
+        // people alike, and a boomer caught in a boomer's burst goes
+        // with it, the chain ending where the sight lines no longer
+        // read.
         for (auto& q : players) {
             if (!q || !q->alive || q.get() == &p) continue;
             if (!q->playing()) continue;
-            const float dx = q->body.pos.x - c.x;
-            const float dy = q->body.pos.y - c.y;
-            const float dz = q->body.pos.z - c.z;
-            const float d = std::sqrt(dx * dx + dy * dy + dz * dz);
-            if (d > static_cast<float>(boomer_blast)) continue;
-            const int hurt =
-                static_cast<int>(static_cast<double>(boomer_hurt) *
-                (1.0 - static_cast<double>(d) / boomer_blast)) + 1;
-            set_hp(*q, q->hp - hurt, nullptr, kGrenadeKill, &c);
+            const float dmg =
+                nade::blast_damage(&phys_map, c, q->body.pos);
+            if (static_cast<int>(dmg) <= 0) continue;
+            set_hp(*q, q->hp - static_cast<int>(dmg), nullptr,
+                   kGrenadeKill, &c);
         }
-        // The core, when the burst reaches its ground.
-        if (horde->near_core(
-                bx, by, static_cast<int>(boomer_blast) + 1))
+        // The core, when the burst reaches its ground: the dig brims
+        // four cells out, and the core standing in them pays.
+        if (horde->near_core(bx, by, 4))
             horde->on_core_damaged(boomer_core_hurt);
         // The say: a flash of its own pink, then the dust.
         const Vec3 at{bx + 0.5f, by + 0.5f, bz + 1.0f};

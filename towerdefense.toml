@@ -161,14 +161,13 @@ breaker_bounty = 7
 # waves from boomer_wave_first, each tread of it a pink bladder and its
 # dead thinned to boomer_wave_scale percent of the ramp. The wick lights
 # on a person in boomer_arm, a wall stood against, or the core itself,
-# burns boomer_fuse seconds blinking quicker and quicker, then bursts:
-# a pit dug, boomer_hurt to every body in boomer_blast - its own side
-# as much as the people's - and boomer_core_hurt to the core it brims.
+# burns boomer_fuse seconds blinking quicker and quicker, then bursts
+# with the radius of a grenade - the same reach, the same fall with
+# distance, the same walls between - its own side as much as the
+# people's, and boomer_core_hurt to the core it brims against.
 boomer_wave_first = 6
 boomer_wave_every = 5
 boomer_wave_scale = 60
 boomer_fuse = 2.5
 boomer_arm = 10.0
-boomer_blast = 6.0
-boomer_hurt = 60
 boomer_core_hurt = 30
