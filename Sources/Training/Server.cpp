@@ -2467,15 +2467,29 @@ struct Server::Impl {
             }
             if (section == "specials") {
                 // The brutes of the wave, said by their own words: one
-                // table stands, five names read, each field its fence.
+                // table stands, six names read, each field its fence.
+                // A hole in the table would send a null word to the
+                // scan and fall the server, so the boomer is named too.
                 static const char* const kWords[kSpecialCount] = {
-                    "spitter", "tank", "healer", "leaper", "breaker"};
+                    "spitter", "tank", "healer", "leaper", "breaker",
+                    "boomer"};
                 int kind = -1;
                 for (int k = 0; k < kSpecialCount; ++k)
                     if (key.rfind(kWords[k], 0) == 0) {
                         kind = k;
                         break;
                     }
+                // The lone keys stand apart from the brute words: the
+                // scan above would name a brute off their prefix and
+                // swallow them unread, so they step out of the scan.
+                if (key == "healer_with_tank_wave" || key == "healer_reach" ||
+                    key == "breaker_stroke" || key == "leaper_hunt_chance" ||
+                    key == "leaper_leap_every" || key == "leaper_leap_hold" ||
+                    key == "leaper_leap_perch" || key == "boomer_wave_first" ||
+                    key == "boomer_wave_every" || key == "boomer_wave_scale" ||
+                    key == "boomer_fuse" || key == "boomer_red_lead" ||
+                    key == "boomer_arm" || key == "boomer_core_hurt")
+                    kind = -1;
                 if (kind >= 0) {
                     // What the key still holds after the name: the field.
                     const std::string field =
