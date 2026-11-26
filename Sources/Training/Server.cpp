@@ -614,6 +614,10 @@ struct Player {
     // Which brute this walker stands as, one of SpecialKind, or -1 for a
     // plain grunt: the wave dressed it, the behaviour reads it.
     int brute = -1;
+    // The leapers are two minds under one skin: most walk with the
+    // pack like any grunt, a rare few hunt the living on their own -
+    // which one it is, the spawner draws at the turn of the roll.
+    bool hunts = false;
     // A brute stood by the word of a person, not by the wave: it walks
     // and bites all the same, yet the wave keeps its ledger without it.
     bool off_ledger = false;
@@ -731,7 +735,7 @@ struct TurretTuning {
 // as the tables above.
 struct EconomyTuning {
     int per_kill = 1;        // the bounty of a grunt; specials ask more
-    int start = 15;          // the purse a first rise opens
+    int start = 24;          // the purse a first rise: three guns deep
     int wave_bonus = 10;     // plus the number of the wave, on a clear
     int price_base = 5;      // a first gun, before the step
     int price_step = 2;      // by each pillar the builder already stands
@@ -845,6 +849,8 @@ struct Server::Impl {
     uint8_t heal_bed_next = 0;
     float healer_reach = 20.0f;
     double breaker_stroke = 1.5;
+    // How many leapers in a hundred are born hunters of the living.
+    int leaper_hunt_chance = 20;
     // Where the people were, a ring per slot: a sample every kPastBeat,
     // held kPastKeep seconds. The lag of a spit reads a place a body
     // stood this long back, and only the still are caught where they
@@ -1382,6 +1388,7 @@ struct Server::Impl {
     int score_best = -1;
     int score_stand = -1; // the best this run began against
     bool score_told = false; // the fall of the old best, said once
+    bool score_fouled = false; // the cheat words shut the run out
     double core_alarm_at = 0.0;   // "under attack": one line every few seconds
     // The packs: one per spawn point, a single path each - the last joined
     // zombie of a point is the one the next of its pack follows.
@@ -1417,15 +1424,16 @@ struct Server::Impl {
     // a placeholder, until its own model stands.
     SpecialTuning specials[kSpecialCount] = {
         {"Spitter", 65, 5, 5, 0, 0, 0, 0, 2, 10, 5, 7, 100},
-        {"Tank", 69, 10, 3, 0, 0, 0, 0, 0, 0, 0, 0, 10},
+        {"Tank", 69, 10, 3, 0, 0, 0, 0, 0, 3, 1, 0, 10},
         {"Healer", 67, 8, 10, 0, 0, 0, 0, 0, 0, 0, 0, 100},
         {"Leaper", 66, 6, 7, 30, 3, 12, 3, 0, 0, 0, 0, 100},
         {"Breaker", 68, 7, 8, 60, 0, 0, 0, 0, 0, 0, 0, 100},
     };
     int healer_tank_together = 20;  // both bullies stand from this wave on
-    // The specials the wave rides: one rides each due tread, at the place
-    // the tread names, until the queue is spent - the dead of a wave walk
-    // in single file, and a brute walks beside the grunts, not instead.
+    // The specials the wave rides: one takes the tread of the grunt it
+    // stands for, at the place the tread names, until the queue is
+    // spent - the dead of a wave walk in single file, and the tread
+    // holds a walker either way, whatever its skin.
     std::vector<int> special_due;
     SpitterTuning spitter;
     uint8_t turret_next_id = 1;
@@ -2055,6 +2063,14 @@ struct Server::Impl {
             p->bounty = st->bounty;
             p->brute = special;
         }
+        // The leaper draws its mind at the door: the walk with the
+        // pack or the hunt alone, and the tuning says how rare the
+        // hunter is.
+        if (special == kLeaper) {
+            p->hunts =
+                std::uniform_int_distribution<int>(0, 99)(rng) <
+                leaper_hunt_chance;
+        }
         p->off_ledger = off_ledger;
         // Single file behind the pack of its corner: a zombie with
         // nobody to follow is the leader of the pack, and reads the
@@ -2163,6 +2179,7 @@ struct Server::Impl {
         score_book.clear();
         score_best = -1;
         score_told = false;
+        score_fouled = false;
         score_own = score_name_of();
         std::ifstream in("towerdefense_scores.txt", std::ios::binary);
         if (!in) return;
@@ -2233,6 +2250,7 @@ struct Server::Impl {
     // this run alone, against the page as the run opened it; past it
     // the book takes its leaves in quiet.
     void note_score_wave(int wave) {
+        if (score_fouled) return;   // the cheat words shut the run out
         if (wave <= 0 || wave <= score_best) return;
         if (score_stand >= 0 && !score_told) {
             char text[96];
@@ -2250,6 +2268,57 @@ struct Server::Impl {
             }
         if (!placed) score_book.push_back({score_own, wave});
         save_score_book();
+    }
+
+    // The cheat words, /dosh and /clearwave, buy their help at the
+    // price of the run: from the first of them the book hears none of
+    // its waves, the page it opened with is stood back as it was, and
+    // a record that fell to the cheat is un-fallen with it. The word
+    // goes out once, and the rest of the run counts for nothing.
+    void foul_score() {
+        if (score_fouled) return;
+        score_fouled = true;
+        if (score_stand >= 0) {
+            // The run opened on a page that held a best: it stands back.
+            if (score_best > score_stand)
+                score_best = score_stand;
+            bool placed = false;
+            for (auto& slot : score_book)
+                if (slot.first == score_own) {
+                    placed = true;
+                    slot.second = score_stand;
+                }
+            if (!placed)
+                score_book.push_back({score_own, score_stand});
+            save_score_book();
+        } else if (score_best >= 0) {
+            // The run opened on a page with no best of its own: the
+            // blank it rose from takes the page back.
+            for (auto it = score_book.begin(); it != score_book.end();)
+                if (it->first == score_own)
+                    it = score_book.erase(it);
+                else
+                    ++it;
+            score_best = -1;
+            save_score_book();
+        }
+        system_chat("The book turns its back on this run.");
+    }
+
+    // /dosh: a fistful of Zedcreds out of thin air - at the price the
+    // foul above puts on the run it reaches into.
+    void dosh_command(Player& p, const std::string& text) {
+        const long give = std::strtol(text.c_str() + 5, nullptr, 10);
+        if (give <= 0 || give > 100000) {
+            system_chat("The dosh reads nothing: /dosh 50", p.id);
+            return;
+        }
+        p.zc += static_cast<int>(give);
+        char said[96];
+        std::snprintf(said, sizeof said, "%ld more Zedcreds in hand.",
+                      give);
+        system_chat(said, p.id);
+        foul_score();
     }
 
     // towerdefense.toml beside the server, seen again at every start of
@@ -2402,6 +2471,9 @@ struct Server::Impl {
                         4.0f, static_cast<float>(number(value)));
                 } else if (key == "breaker_stroke") {
                     breaker_stroke = std::max(0.05, number(value));
+                } else if (key == "leaper_hunt_chance") {
+                    leaper_hunt_chance = std::min(
+                        100, std::max(0, static_cast<int>(number(value))));
                 }
                 continue;
             }
@@ -3721,8 +3793,8 @@ struct Server::Impl {
     // The Breaker: the core is the road entire, and the line between is
     // walked as straight as the map allows the aim - no field, no
     // advice, no detour a cliff asks for, and falls are walked honestly
-    // off every edge on the way. What stands on the line comes down: a
-    // stair of one or two is hopped, and the rest is carved standing at
+    // off every edge on the way. What stands on the line comes down:
+    // all of it alike, the stair of one as much as the wall, carved at
     // the face, the focus column and its two mates, a cut four high at
     // the walker's own pace of stroke, onto rock only - the air
     // rides along unharmed and the core holds against every cell, for
@@ -3743,12 +3815,16 @@ struct Server::Impl {
         bool foot = false, head = false, sky = false;
         face_ahead(p, cx, cy, fz, fx, fy, foot, head, sky);
         if (!foot && !head) return;   // the line is open: walk it
-        if (!sky) {
-            p.input.jump = true;   // a stair of one or two, hopped
+        // Everything on the line comes down, even the stair of one
+        // a walker would hop: the dig buys its own road twice over.
+        // Only when there is no licence to dig at all does the old
+        // stair-hop mercy stand in its place.
+        if (!horde_cfg.dig) {
+            if (!sky)
+                p.input.jump = true;   // no licence to dig: the stair-hop
             return;
         }
-        if (!horde_cfg.dig ||
-            world_time < p.spade_at + breaker_stroke) return;
+        if (world_time < p.spade_at + breaker_stroke) return;
         // The stroke, standing at the face: the walker stops pressing
         // and works, mates onto rock only, never the core column, and
         // every voxel that comes off carries its own word to the wire.
@@ -3757,9 +3833,10 @@ struct Server::Impl {
         const int ly = fx - cx != 0 ? 1 : 0;
         bool stroked = false;
         std::vector<Cell> removed;
-        // The road it digs stands four high over the ground it walks:
-        // a body and a half of sky above the heads, so the whole of
-        // the wave behind it walks the road as clean as its digger.
+        // The cut stands four high over the ground it walks, three
+        // mates wide: its own way through, and what the wave behind
+        // it makes of the breach is the business of the wave. The
+        // road was an experiment, and the experiment is over.
         for (int i = -1; i <= 1; ++i) {
             const int bx = fx + lx * i;
             const int by = fy + ly * i;
@@ -3894,7 +3971,8 @@ struct Server::Impl {
         Player* pack_ahead = p.ahead_id >= 0
             ? players[static_cast<size_t>(p.ahead_id)].get() : nullptr;
         const Player* ahead =
-            p.brute == kSpitter ? nullptr : pack_ahead;
+            p.brute == kSpitter || p.brute == kBreaker ||
+            (p.brute == kLeaper && p.hunts) ? nullptr : pack_ahead;
         if (ahead && ahead->id != p.id && ahead->zombie && ahead->alive) {
             // The heel held in the footsteps of the one ahead: a follower
             // is led by the prints its leader left - the threshold it
@@ -4041,7 +4119,8 @@ struct Server::Impl {
             // is a brute of a mind of its own, whose road was never the
             // walk: the hunt and the line hand the pack over first.
             p.ahead_id = -1;
-            if (p.brute == kSpitter || p.brute == kLeaper) {
+            if (p.brute == kSpitter ||
+                (p.brute == kLeaper && p.hunts)) {
                 hand_pack_over(p);
                 hunt_tick(p, cx, cy, fz);
             } else if (p.brute == kBreaker) {
@@ -4313,8 +4392,8 @@ struct Server::Impl {
                 // the mercy rides the road to the core, and the three
                 // minds that left the road never ride it back: the hunt
                 // stands its ground at a wall, and the breaker carves
-                p.brute != kSpitter && p.brute != kLeaper &&
-                p.brute != kBreaker)
+                p.brute != kSpitter && p.brute != kBreaker &&
+                (p.brute != kLeaper || !p.hunts))
                 teleport_pinned(p);
         }
     }
@@ -4946,8 +5025,9 @@ struct Server::Impl {
             } else {
                 // The count kinds: one on its first wave and each
                 // every_wave after it, and every wave from the grow_wave
-                // on, one more standing each grow_every, held at the
-                // cap the tuning says.
+                // on, one more standing each grow_every - counted from
+                // the first wave the brute stands - held at the cap the
+                // tuning says, when it says one at all.
                 const bool stands =
                     (s.grow_wave > 0 && wave >= s.grow_wave) ||
                     s.every_wave <= 0 ||
@@ -4955,9 +5035,15 @@ struct Server::Impl {
                 if (!stands) continue;
                 want = 1;
                 if (s.grow_wave > 0 && wave >= s.grow_wave &&
-                    s.grow_every > 0)
-                    want = std::min(s.grows_to,
-                                   2 + (wave - s.grow_wave) / s.grow_every);
+                    s.grow_every > 0) {
+                    // The climb counts its steps from the wave the
+                    // brute first stood: one more each grow_every of
+                    // the way, and a grows_to of zero says the climb
+                    // never tops out.
+                    want = 1 + (wave - s.first_wave) / s.grow_every;
+                    if (s.grows_to > 0 && want > s.grows_to)
+                        want = s.grows_to;
+                }
             }
             // The healer holds the tank's waves: below the wave the
             // tuning names, whenever the healer keeps a wave the tank
@@ -4988,7 +5074,8 @@ struct Server::Impl {
         std::vector<int> votes(players.size(), 0);
         for (auto& z : players) {
             if (!z || !z->alive || !z->zombie) continue;
-            if (z->brute != kSpitter && z->brute != kLeaper) continue;
+            if (z->brute != kSpitter &&
+                (z->brute != kLeaper || !z->hunts)) continue;
             Player* t = nullptr;
             float bd = -1.0f;
             for (auto& qq : players) {
@@ -5052,9 +5139,8 @@ struct Server::Impl {
                                           horde->wave());
                         } else {
                             std::snprintf(text, sizeof text, "Wave %d: %d zombies coming",
-                                          horde->wave(), static_cast<int>(
-                                              horde->placed() +
-                                              special_due.size()));
+                                          horde->wave(),
+                                          static_cast<int>(horde->placed()));
                         }
                         system_chat(text);
                         note_score_wave(horde->wave());
@@ -5139,22 +5225,15 @@ struct Server::Impl {
                     corner_ping_next[c] = world_time + 30.0;
                     ping_wave_spawn(s);
                 }
-                add_zombie(s);
-                // A brute of the queue rides the tread beside its grunt,
-                // at the same corner, until the wave tells no more.
+                // A brute of the queue stands for a grunt: it takes
+                // this tread itself, the place a grunt was to walk -
+                // a walker of the wave either way, and never a wave
+                // grown fat by its own specials.
                 if (!special_due.empty()) {
-                    const int rode = special_due.front();
-                    add_zombie(s, rode);
+                    add_zombie(s, special_due.front());
                     special_due.erase(special_due.begin());
-                    // The healer walks the tank's own pack once the
-                    // tuning lets both stand: the same tread, the same
-                    // corner, never a pack apart.
-                    if (rode == kTank && !special_due.empty() &&
-                        special_due.front() == kHealer &&
-                        horde->wave() >= healer_tank_together) {
-                        add_zombie(s, special_due.front());
-                        special_due.erase(special_due.begin());
-                    }
+                } else {
+                    add_zombie(s);
                 }
             }
         }
@@ -6438,8 +6517,13 @@ struct Server::Impl {
             else if (text == "/restart" && aim_mode()) {
                 reset_run();
                 if (p.alive) spawn(p);
-            } else if (text == "/clearwave" && tower_defense_mode())
+            } else if (text == "/clearwave" && tower_defense_mode()) {
+                foul_score();
                 clear_wave();
+            } else if (tower_defense_mode() &&
+                       text.rfind("/dosh", 0) == 0) {
+                dosh_command(p, text);
+            }
             else if ((text == "/money" || text == "/credits") &&
                      tower_defense_mode())
                 system_chat(std::to_string(p.zc) + " credits in hand.", p.id);
@@ -6459,8 +6543,8 @@ struct Server::Impl {
                        (text == "/va" || text == "/mapadvance")) {
                 map_advance_command(p);
             } else if (tower_defense_mode())
-                system_chat("Commands here: /clearwave, /kill, /turret, "
-                            "/core, /money, /va, /brute", p.id);
+                system_chat("Commands here: /clearwave, /dosh, /kill, "
+                            "/turret, /core, /money, /va, /brute", p.id);
             else system_chat(aim_mode() ? "Commands here: /restart, /kill"
                                         : "Commands here: /kill", p.id);
             return;

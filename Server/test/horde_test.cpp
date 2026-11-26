@@ -518,10 +518,11 @@ void test_waves() {
 void test_growth() {
     std::printf("[growth] the wave size curve\n");
     horde::Config cfg;
-    check(cfg.wave_zombies(1) == 20, "wave one: one pack of twenty");
-    check(cfg.wave_zombies(2) == 40, "wave two: a second point, a second pack");
-    check(cfg.wave_zombies(10) == 200, "wave ten: every point, a pack apiece");
-    check(cfg.wave_zombies(11) == 250, "wave eleven: the packs deepen to twenty-five");
+    check(cfg.wave_zombies(1) == 5, "wave one: the first five");
+    check(cfg.wave_zombies(2) == 10, "wave two: five more on the way");
+    check(cfg.wave_zombies(5) == 25, "wave five: the ramp of five ends");
+    check(cfg.wave_zombies(10) == 80, "wave ten: ten points, packs cut deep");
+    check(cfg.wave_zombies(11) == 100, "wave eleven: the ramp of ten stacks");
     check(cfg.wave_zombies(30) == 250, "far out: capped at the world's budget");
 }
 

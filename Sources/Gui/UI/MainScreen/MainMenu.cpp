@@ -22,6 +22,8 @@
 #include <functional>
 #include <algorithm>
 #include <cctype>
+#include <fstream>
+#include <sstream>
 
 #include "MainMenu.h"
 #include "MainScreenUI.h"
@@ -721,8 +723,8 @@ namespace spades {
 					RefreshTrainingPanel();
 				});
 				y += bh + gap * 2.0F;
-				label(_Tr("MainScreen", "Tower Defense: waves of the walking dead,"
-								                        " marching on a core you defend"), 26.0F,
+				label(_Tr("MainScreen", "Tower Defense : hold your ground against "
+								"endless waves of zombies."), 26.0F,
 				      MakeVector4(0.45F, 0.85F, 0.45F, 1.0F));
 				towerDefenseButton = button(x, bw, [this] { StartTowerDefense(); });
 				y += bh + gap;
@@ -828,6 +830,29 @@ namespace spades {
 				base = base.substr(0, dot);
 			return base;
 		}
+		/** The best wave a map stood, read from the record book the
+		    server keeps beside itself: a map and a wave on a line each.
+		    Nothing found reads as none, a missing file the same. */
+		static std::string TowerDefenseBestWave(const std::string& map) {
+			std::ifstream in("towerdefense_scores.txt");
+			if (!in)
+				return "none";
+			const std::string key = map.empty()
+			    ? "Termina_FieldsTD" : TowerDefenseMapName(map);
+			std::string line;
+			while (std::getline(in, line)) {
+				const size_t hash = line.find('#');
+				if (hash != std::string::npos)
+					line.resize(hash);
+				std::istringstream words(line);
+				std::string name;
+				int wave = -1;
+				if (words >> name >> wave && name == key)
+					return std::to_string(wave);
+			}
+			return "none";
+		}
+
 
 		void MainScreenMainMenu::RefreshTrainingPanel() {
 			const auto bests = client::Client::ReadTrainingBests();
@@ -878,12 +903,15 @@ namespace spades {
 			                             ? _Tr("MainScreen", "Highlight targets: on")
 			                             : _Tr("MainScreen", "Highlight targets: off");
 			if (towerDefenseButton)
-				towerDefenseButton->caption = _Tr("MainScreen", "Tower Defense");
+				towerDefenseButton->caption = _Tr("MainScreen", "Tower Defense - Launch");
 			if (towerDefensePickButton) {
 				const std::string map = TrainingHost::GetTowerDefenseMap();
-				towerDefensePickButton->caption = _Tr("MainScreen", "Map") + ": " +
-				    (map.empty() ? _Tr("MainScreen", "Termina Fields")
-				                 : TowerDefenseMapName(map));
+				towerDefensePickButton->caption =
+				_Tr("MainScreen", "Current map : ") +
+				(map.empty() ? _Tr("MainScreen", "Termina Fields")
+				 : TowerDefenseMapName(map)) +
+				_Tr("MainScreen", " - best score : ") +
+				TowerDefenseBestWave(map);
 			}
 		}
 

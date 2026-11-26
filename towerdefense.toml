@@ -42,7 +42,7 @@ interval = [0.17, 0.17, 0.066]
 zedcred_per_kill = 1
 
 # The purse a first rise opens.
-zedcred_start = 15
+zedcred_start = 24
 
 # A wave cleared pays this plus the number of the wave.
 wave_bonus_base = 10
@@ -74,8 +74,11 @@ turret_refund = 70
 # and never leads, mends the worst hurt of the walking dead within
 # healer_reach blocks at the pace of a second level gun, holds the
 # tank its own waves until healer_with_tank_wave and walks beside it
-# from it on. The breaker digs its road a stroke every breaker_stroke
-# seconds, three wide and four high.
+# from it on. The breaker walks its own straight line to the core and
+# digs all that stands on the line, a stroke every breaker_stroke
+# seconds, three wide and four high. All the specials stand in the
+# tread of a grunt of the wave: a walker either way, only of another
+# skin, and never a wave grown fat by its own specials.
 
 [specials]
 
@@ -113,8 +116,12 @@ spitter_acid_melt = 5.0
 spitter_acid_pool = 1
 
 # The Tank, the blue one, in the ZombieTank set. It walks the grunts
-# walk, in their packs - only a tenth of every volley ever lands.
+# walk, in their packs, in the tread of the grunt it stands for - only
+# a tenth of every volley ever lands, and one more of it every wave
+# from the third, without end.
 tank_first_wave = 3
+tank_grow_wave = 3
+tank_grow_every = 1
 tank_keeps = 10
 tank_bounty = 10
 
@@ -129,8 +136,10 @@ healer_with_tank_wave = 20
 healer_reach = 20.0
 breaker_stroke = 1.5
 
-# The Leaper, the red one.
+# The Leaper, the red one: most walk with the pack like a grunt, and
+# leaper_hunt_chance in a hundred are born hunters of the living.
 leaper_first_wave = 7
+leaper_hunt_chance = 20
 leaper_chance = 30
 leaper_chance_grow = 3
 leaper_rolls_wave = 12

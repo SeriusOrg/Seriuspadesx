@@ -146,20 +146,26 @@ struct Config {
     // drawn one - while a breach the pack itself opens is still read
     // before the errand can be asked again.
     double field_period = 2.0;
-    // How big a wave is: the waves open fronts as they number. A wave
-    // takes one spawn point more than the one before it, as many of the
-    // ranked order as the terrain holds, until the points reach their
-    // cap - and past the cap it is the pack at each point that grows,
-    // a few more to a point, for the ways in are as many as they ever
-    // were and only the crowds on them deepen. The knobs are the
-    // balance phase's to turn: the cap, the pack's base, its growth.
-    // The whole of it is capped at kWaveMaxZombies, the world's own
-    // budget of the dead - what the slots cannot stand is skipped at
-    // the raising, one at a time, and never a wave that waits on it.
+    // How big a wave is: the waves open fronts as they number, one
+    // spawn point more a wave until the points reach their cap - and
+    // the dead a wave counts climb their own ramp: five the first
+    // wave, five more a wave to the fifth, ten more a wave to the
+    // tenth, twenty more a wave ever after. The ramp is cut to the
+    // packs each point stands, so a thin front of points field packs
+    // as deep as a wide one. The whole of it is capped at
+    // kWaveMaxZombies, the world's own budget of the dead - what the
+    // slots cannot stand is skipped at the raising, one at a time,
+    // and never a wave that waits on it.
     int spawn_point_cap = kSpawnSites;
-    static constexpr int kPackBase = 20;
-    static constexpr int kPackGrowth = 5;
     static constexpr int kWaveMaxZombies = 250;
+    int wave_target(int wave) const {
+        const int w = (std::max)(1, wave);
+        if (w <= 5)
+            return 5 + 5 * (w - 1);
+        if (w <= 10)
+            return 25 + 10 * (w - 5);
+        return 75 + 20 * (w - 10);
+    }
     int wave_points(int wave) const {
         int pool = kSpawnSites;
         if (spawn_named && spawn_count >= 1 && spawn_count < kSpawnSites)
@@ -171,9 +177,9 @@ struct Config {
         return w < cap ? w : cap;
     }
     int wave_pack(int wave) const {
-        const int w = (std::max)(1, wave);
-        const int cap = wave_points(wave);
-        return kPackBase + kPackGrowth * (w > cap ? w - cap : 0);
+        const int points = wave_points(wave);
+        const int want = (std::max)(1, wave_target(wave));
+        return (want + points - 1) / points;   // the ramp cut to decks
     }
     int wave_zombies(int wave) const {
         return (std::min)(kWaveMaxZombies, wave_points(wave) * wave_pack(wave));

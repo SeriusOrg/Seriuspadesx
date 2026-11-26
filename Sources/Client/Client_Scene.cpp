@@ -67,7 +67,7 @@ DEFINE_SPADES_SETTING(cg_debugPlayerHitboxes, "0");
 DEFINE_SPADES_SETTING(cg_spitDebug, "0");
 // The spit rides the arc this many times the size a grenade flies:
 // big enough to read across the field, held in the console to tune.
-DEFINE_SPADES_SETTING(cg_spitScale, "2.5");
+DEFINE_SPADES_SETTING(cg_spitScale, "4");
 
 SPADES_SETTING(cg_ragdoll);
 SPADES_SETTING(cg_hurtScreenEffects);
