@@ -67,8 +67,10 @@ namespace spades {
 			// 0 spreads as a wide cloud, 1 rises as a thin column, 2 gathers
 			// as a heavy vapour that hugs the floor and renews rather than
 			// climbs - nothing rises out of it, so a trail of it lies along
-			// the ground where the eye reads it as a path.
-			enum Style : std::uint8_t { Cloud = 0, Column = 1, Ground = 2 };
+			// the ground where the eye reads it as a path. 3 is a blast:
+			// the whole burst painted once at a stroke, not poured.
+			enum Style : std::uint8_t {
+				Cloud = 0, Column = 1, Ground = 2, Blast = 3};
 			static constexpr int kAnonymous = 255;
 
 			int id = kAnonymous;

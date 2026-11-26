@@ -1214,6 +1214,12 @@ namespace spades {
 			void StartSmoke(const SmokeParams& params);
 			void ClearSmoke(int id) { smokes.Clear(id); }
 
+			/** The blast style of the Smoke extension: the rocket's own
+			 * burst, painted once at a stroke - the wide clouds, the
+			 * light with the boom riding it, the dark smoke that climbs
+			 * - not poured for a duration like the other styles. */
+			void SpawnBlast(const Vector3& pos);
+
 			/** The Smoke extension, version 2: the ways in as paths, a line a
 			 * front, drawn as crumbs on the floor by this client on its own.
 			 * The points are the server's waypoints, in world cells; the

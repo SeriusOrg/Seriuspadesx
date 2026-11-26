@@ -68,6 +68,7 @@ duration).
 | 0     | Cloud  | A wide, low cloud, spreading out over its radius: a smoke screen. |
 | 1     | Column | A thin plume rising straight up from where it is: a marker. Radius sets how wide. |
 | 2     | Ground | A heavy vapour hardly a block deep, hugging the floor and renewed for its whole stay like it is freshly poured: a trail. Nothing climbs out of it. |
+| 3     | Blast | The whole burst of an explosion, painted once at a stroke: wide burst clouds, a bright light that dies in half a second with the boom riding it, then dark smoke that lingers and climbs. The colour, radius, opacity and time fields are read only by a client that falls back to a cloud. |
 
 A client draws a style it does not know as `0`.
 

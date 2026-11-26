@@ -382,6 +382,12 @@ namespace spades {
 			SPADES_MARK_FUNCTION();
 			if (!world)
 				return; // before the map: the server sends it again once it is in
+			// A blast goes off at a stroke, not poured for a duration:
+			// the clouds, the light and the boom, the dark climb.
+			if (params.style == SmokeParams::Blast) {
+				SpawnBlast(params.origin);
+				return;
+			}
 			Handle<IAudioChunk> hiss;
 			if (params.sound && !IsMuted())
 				hiss = audioDevice->RegisterSound("Sounds/Misc/Smoke.opus");
@@ -389,6 +395,108 @@ namespace spades {
 			// the particles down must not see through it.
 			localEntities.emplace_back(stmp::make_unique<SmokeEntity>(
 			  *this, audioDevice.GetPointerOrNull(), hiss, params, smokes.Start(params.id)));
+		}
+
+		namespace {
+			// The brief bright light of a blast, decaying over half a
+			// second, and the boom riding it. The boom plays in 2D with
+			// a manual distance falloff: the fork's spatial path eats a
+			// sound born at a block face, so the falloff is said by hand.
+			class BlastFlashEntity : public ILocalEntity {
+			public:
+				BlastFlashEntity(Client& client, IAudioDevice* audio,
+				                  Handle<IAudioChunk> boom, Vector3 origin);
+				bool Update(float dt) override;
+				void Render3D() override;
+
+			private:
+				Client& client;
+				IAudioDevice* audio; // may be null when muted
+				Handle<IAudioChunk> boom;
+				Vector3 origin;
+				float age = 0.0F;
+			};
+
+			BlastFlashEntity::BlastFlashEntity(Client& cli, IAudioDevice* audio,
+			                                   Handle<IAudioChunk> boom,
+			                                   Vector3 origin)
+			    : client(cli), audio(audio), boom(std::move(boom)),
+			      origin(origin) {
+				if (audio && boom) {
+					float dist = 1.0F;
+					if (client.GetWorld()) {
+						auto lp = client.GetWorld()->GetLocalPlayer();
+						if (lp)
+							dist = (origin - lp->GetEye()).GetLength();
+					}
+					// The volume the engine gives its own grenade
+					// explosions, over a falloff that keeps the distant
+					// ones audible and the close ones louder.
+					AudioParam param;
+					param.volume = 1.5F * 6.0F / (1.0F + dist / 12.0F);
+					audio->PlayLocal(boom.GetPointerOrNull(), param);
+				}
+			}
+
+			bool BlastFlashEntity::Update(float dt) {
+				age += dt;
+				return age < 0.5F;
+			}
+
+			void BlastFlashEntity::Render3D() {
+				// Four times a rifle bullet flash, dying to nothing.
+				const float per =
+				  age >= 0.5F ? 1.0F : age / 0.5F;
+				DynamicLightParam light;
+				light.type = DynamicLightTypePoint;
+				light.origin = origin;
+				light.radius = 6.0F * (1.0F - per);
+				light.color = MakeVector3(1.0F, 0.75F, 0.4F);
+				client.GetRenderer().AddLight(light);
+			}
+		} // namespace
+
+		void Client::SpawnBlast(const Vector3& pos) {
+			SPADES_MARK_FUNCTION();
+			// The burst clouds: wider and denser than a grenade's, and
+			// they linger long after it.
+			for (int i = 0; i < 8; i++) {
+				auto ent = stmp::make_unique<SmokeSpriteEntity>(
+				  *this, MakeVector4(0.9F, 0.9F, 0.9F, 1.0F), 60.0F,
+				  SmokeSpriteEntity::Type::Explosion);
+				ent->SetTrajectory(pos, RandomUnitVector() * 1.5F, 1.0F, 0.0F);
+				ent->SetRotation(SampleRandomFloat() * kTwoPi);
+				ent->SetRadius(
+				  1.8F + SampleRandomFloat() * SampleRandomFloat() * 0.9F,
+				  4.5F, 0.2F);
+				ent->SetLifeTime(8.1F + SampleRandomFloat() * 0.4F, 0.0F, 1.5F);
+				ent->SetBlockHitAction(BlockHitAction::Ignore);
+				localEntities.emplace_back(std::move(ent));
+			}
+			// The light and the boom.
+			Handle<IAudioChunk> boom;
+			if (!IsMuted())
+				boom = audioDevice->RegisterSound(
+				  "Sounds/Weapons/Grenade/Explode1.opus");
+			localEntities.emplace_back(stmp::make_unique<BlastFlashEntity>(
+			  *this, audioDevice.GetPointerOrNull(), std::move(boom), pos));
+			// The dark smoke that stays about 2.5 s and climbs about 7
+			// blocks, as wide as the burst zone.
+			for (int i = 0; i < 6; i++) {
+				Vector3 off = RandomUnitVector();
+				off.z = 0.0F;
+				auto ent = stmp::make_unique<SmokeSpriteEntity>(
+				  *this, MakeVector4(0.18F, 0.18F, 0.18F, 0.95F), 60.0F,
+				  SmokeSpriteEntity::Type::Steady);
+				ent->SetTrajectory(pos + off * 0.4F,
+				                   MakeVector3(0.0F, 0.0F, -2.7F), 1.0F, 0.0F);
+				ent->SetRotation(SampleRandomFloat() * kTwoPi);
+				ent->SetRadius(2.2F + SampleRandomFloat() * 0.5F, 0.12F);
+				ent->SetLifeTime(2.5F + SampleRandomFloat() * 0.5F, 0.3F,
+				                   0.8F);
+				ent->SetBlockHitAction(BlockHitAction::Ignore);
+				localEntities.emplace_back(std::move(ent));
+			}
 		}
 
 		namespace {

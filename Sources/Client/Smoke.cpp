@@ -205,7 +205,8 @@ namespace spades {
 					SmokeParams p;
 					p.id = r.ReadByte();
 					p.style = r.ReadByte();
-					if (p.style != SmokeParams::Column && p.style != SmokeParams::Ground)
+					if (p.style != SmokeParams::Column && p.style != SmokeParams::Ground &&
+					    p.style != SmokeParams::Blast)
 						p.style = SmokeParams::Cloud; // an unknown style: a cloud
 					const float x = r.ReadFloat(), y = r.ReadFloat(), z = r.ReadFloat();
 					p.origin = MakeVector3(x, y, z);

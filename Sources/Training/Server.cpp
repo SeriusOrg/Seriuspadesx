@@ -4092,10 +4092,20 @@ struct Server::Impl {
             send_mark(p, shade, static_cast<uint8_t>(1));
             const Vec3 at{p.body.pos.x, p.body.pos.y,
                           p.body.pos.z + 0.5f};
-            vapour(0, proto::SmokeStyle::Ground, at, 1,
-                   static_cast<uint8_t>((shade >> 16) & 0xFFu),
-                   static_cast<uint8_t>((shade >> 8) & 0xFFu),
-                   static_cast<uint8_t>(shade & 0xFFu), 0x50, 2, 1);
+            const uint8_t red =
+                static_cast<uint8_t>((shade >> 16) & 0xFFu);
+            const uint8_t green =
+                static_cast<uint8_t>((shade >> 8) & 0xFFu);
+            const uint8_t blue =
+                static_cast<uint8_t>(shade & 0xFFu);
+            // The bed at its feet stays, thicker than before, and a
+            // column of its own colour rises off its head at every
+            // beat: the beats themselves quicken as the wick goes,
+            // so the plume pulses the count out loud.
+            vapour(0, proto::SmokeStyle::Ground, at, 2,
+                   red, green, blue, 0x70, 2, 1);
+            vapour(1, proto::SmokeStyle::Column, at, 1,
+                   red, green, blue, 0xC0, 15, 5);
         }
     }
 
@@ -4147,12 +4157,14 @@ struct Server::Impl {
         // four cells out, and the core standing in them pays.
         if (horde->near_core(bx, by, 4))
             horde->on_core_damaged(boomer_core_hurt);
-        // The say: a flash of its own dark orange, then the dust.
+        // The say: the rocket's own burst, the one the fork stood
+        // behind - a blast style the client paints at a stroke: the
+        // wide clouds, the light that dies in half a second with
+        // the boom riding it, then the dark smoke that climbs. A
+        // client that knows no blast reads a plain cloud instead.
         const Vec3 at{bx + 0.5f, by + 0.5f, bz + 1.0f};
-        vapour(0, proto::SmokeStyle::Cloud, at, 4, 0xE0, 0x60, 0x00,
+        vapour(0, proto::SmokeStyle::Blast, at, 4, 0xE0, 0x60, 0x00,
                0xB0, 8, 2);
-        vapour(1, proto::SmokeStyle::Ground, at, 5, 0x90, 0x90, 0x90,
-               0x60, 25, 5);
     }
 
     // The Breaker: the core is the road entire, and the line between is
