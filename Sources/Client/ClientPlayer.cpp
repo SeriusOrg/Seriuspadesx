@@ -41,6 +41,7 @@
 #include "Weapon.h"
 #include "World.h"
 #include "NetClient.h"
+#include "Teamplay.h"
 #include <Core/Bitmap.h>
 #include <Core/Settings.h>
 #include <ScriptBindings/IBlockSkin.h>
@@ -1669,8 +1670,28 @@ namespace spades {
 						? renderer.RegisterModel("Models/Player/XmasHat.kv6")
 						: renderer.RegisterModel(ModelPart(modelPath, "Head").c_str());
 
-					param.matrix = head * scaler;
+					// A mark that pulses the head: the skull grows and
+					// returns on every renewal of the mark, and the black
+					// voxels of the head model take the mark colour while
+					// the mark holds. The wick of a Boomer renews its mark
+					// on a beat that quickens, so the pulse quickens with
+					// it; the grow is a triangle over a fixed window, so a
+					// beat shorter than the window restarts the climb
+					// before the return and the head reads as throbbing.
+					auto mark = client.GetTeamplay().GetMark(p.GetId());
+					float pulse = 1.0F;
+					if (mark && mark->pulseHead) {
+						constexpr float kHeadBeatWindow = 0.3F;
+						const float phase = mark->age < kHeadBeatWindow
+							? mark->age / kHeadBeatWindow : 1.0F;
+						const float climb = phase < 0.5F
+							? phase * 2.0F : (1.0F - phase) * 2.0F;
+						pulse = 1.0F + 0.4F * climb;
+						param.customColor = ConvertColorRGB(mark->color);
+					}
+					param.matrix = head * scaler * Matrix4::Scale(pulse);
 					renderer.RenderModel(*model, param);
+					param.customColor = MakeVector3(0, 0, 0);
 				}
 
 				// Headlamp, shown while the flashlight is lit

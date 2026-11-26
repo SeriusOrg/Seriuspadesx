@@ -126,8 +126,14 @@ tank_keeps = 10
 tank_bounty = 10
 
 # The Healer, the purple one: a walker of the pack that never leads,
-# mending the walking dead around it.
+# mending the walking dead around it. It stands every wave from
+# healer_first_wave, one more standing each healer_grow_every waves
+# from healer_grow_wave - half again as many over a stretch of waves,
+# held at healer_grows_to when it says one.
 healer_first_wave = 10
+healer_grow_wave = 10
+healer_grow_every = 3
+healer_grows_to = 0
 healer_bounty = 8
 healer_with_tank_wave = 20
 
@@ -148,9 +154,9 @@ leaper_rolls_every = 3
 leaper_bounty = 6
 # The hunters leap: the chase walks the map until the person stands
 # about leaper_leap_country blocks off, then a flight lands on the
-# ground of a perch that stands above the person, one to three seconds
-# of squatting coil - leaper_leap_hold holds the floor of the wait -
-# and the pounce itself, aimed where the person is going.
+# ground of a perch that stands above the person, half a second to
+# one of squatting coil - leaper_leap_hold holds the ceiling of the
+# wait - and the pounce itself, a homing flight at the person.
 leaper_leap_every = 8.0
 leaper_leap_hold = 1.0
 leaper_leap_perch = 30
@@ -166,7 +172,8 @@ breaker_bounty = 7
 # dead thinned to boomer_wave_scale percent of the ramp. The wick lights
 # on a person in boomer_arm, a wall stood against, or the core itself,
 # wears a dark orange flare, burns boomer_fuse seconds under it, and
-# blinks plain red - skin and highlight both - for the last
+# blinks a shade against its dim mate - skin, highlight and the head
+# itself, the skull pulsing at the beat - plain red for the last
 # boomer_red_lead of them, quicker and quicker, then bursts with the
 # radius of a grenade - the same reach, the same fall with distance,
 # the same walls between - its own side as much as the people's, and

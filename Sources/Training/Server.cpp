@@ -867,9 +867,9 @@ struct Server::Impl {
     // hundred may soften it back for a gentler chase.
     int leaper_hunt_chance = 100;
     // The hunter's own arc: how long between leaps, how long the
-    // coil holds its pounce - the floor of a wait drawn out to
-    // three seconds, that the person earns their beat to read the
-    // squat - how distant a perch it aims from the person when the
+    // coil holds its pounce - the ceiling of a wait held inside a
+    // second, that the person earns their beat to read the squat
+    // - how distant a perch it aims from the person when the
     // chase reads the ring around them, and how distant the person
     // stands before the two flights begin at all: the chase walks
     // the map until then. The lift is the rise a flight owes the
@@ -900,6 +900,16 @@ struct Server::Impl {
     // the plain red its final stretch blinks.
     static constexpr uint32_t kBoomOrange = 0xE06000;
     static constexpr uint32_t kBoomRed = 0xFF2020;
+    // The dim mate of each: the blink flips a shade and its mate,
+    // orange on orange while the wick runs and red on red once its
+    // last stretch begins, that the colour says the phase and the
+    // blink says the beat.
+    static constexpr uint32_t kBoomOrangeDim = 0x7A3000;
+    static constexpr uint32_t kBoomRedDim = 0x8F1010;
+    // The ESP Mark flag that says the head itself: bit 2 of the
+    // mark word, MarkFlagPulseHead on a client that knows it, the
+    // marked head growing and returning at the beat the mark keeps.
+    static constexpr uint8_t kMarkHeadPulse = 2;
     // A wick pressed against a wall lights after this long a stand.
     static constexpr double kBoomStuck = 1.0;
     // Where the people were, a ring per slot: a sample every kPastBeat,
@@ -1480,7 +1490,7 @@ struct Server::Impl {
     SpecialTuning specials[kSpecialCount] = {
         {"Spitter", 65, 5, 3, 0, 0, 0, 0, 0, 4, 1, 0, 100},
         {"Tank", 69, 10, 3, 0, 0, 0, 0, 0, 3, 1, 0, 10},
-        {"Healer", 67, 8, 10, 0, 0, 0, 0, 0, 0, 0, 0, 100},
+        {"Healer", 67, 8, 10, 0, 0, 0, 0, 0, 10, 3, 0, 100},
         {"Leaper", 66, 6, 7, 40, 4, 10, 3, 0, 0, 0, 0, 100},
         {"Breaker", 68, 7, 8, 60, 0, 0, 0, 0, 0, 0, 0, 100},
         {"Boomer", 70, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -3995,14 +4005,16 @@ struct Server::Impl {
     // pounce itself, an arc at where the person is going. Every leg is
     // loud: the perch is plain to see, the coil plainer in its squat,
     // and both buy the hunted their beat to move.
-    // The coil between the two flights: a squat held one to three
-    // seconds, the tuning holds its floor and the draw rides on
-    // top of it - the person earns their beat to read the squat
-    // and move before the pounce takes them.
+    // The coil between the two flights: a squat held half a second
+    // to one, the tuning holds its ceiling and the draw rides
+    // under it - the person earns their beat to read the squat and
+    // move before the pounce takes them, and the pounce owes them
+    // the shorter read a beat that brief buys.
     double coil_hold() {
         const double draw =
             std::uniform_real_distribution<double>(0.0, 1.0)(rng);
-        return leap_hold + std::max(0.0, 3.0 - leap_hold) * draw;
+        const double top = std::max(0.5, std::min(1.0, leap_hold));
+        return 0.5 + (top - 0.5) * draw;
     }
 
     void leap_start(Player& p, const Vec3& to, const double due,
@@ -4038,6 +4050,22 @@ struct Server::Impl {
         // its own speed, the share of what it still owes - and a lift
         // at the takeoff that thins on the way, so the road reads as
         // an arc in the air, never a throw of a dice.
+        // The pounce is a homing one: the person the coil sprang
+        // at keeps their feet while the flight is in the air, and a
+        // flight aimed only at where they stood lands where they
+        // stood - a miss the whole perch was never owed. So the
+        // pounce reads its person every tick of its flight and
+        // flies at where they stand, the flight steering itself
+        // whole already; the perch flight keeps its fixed landing,
+        // for a perch is a place, and the person is not.
+        if (p.leap_stage == 3) {
+            const Player* t = hunt_focus_;
+            if (t != nullptr && t->alive) {
+                p.leap_to.x = t->body.pos.x;
+                p.leap_to.y = t->body.pos.y;
+                p.leap_to.z = t->body.pos.z;
+            }
+        }
         double hold = left;
         if (hold < 0.02) hold = 0.02;
         const float inv = 32.0f * static_cast<float>(hold);
@@ -4075,9 +4103,17 @@ struct Server::Impl {
                 t->body.pos.x + t->body.vel.x * 32.0f * lead));
             const int py = static_cast<int>(std::floor(
                 t->body.pos.y + t->body.vel.y * 32.0f * lead));
+            // The pounce lands where the person stands, at the
+            // height they stand at: the ground top the old read flew
+            // at is the surface under their feet, and a pounce
+            // flown at the floor lands a body short of the person
+            // every time. The coil aims the flight at the person,
+            // and the flight itself homes in on them below.
             Vec3 to{px + 0.5f, py + 0.5f, t->body.pos.z};
-            if (px >= 1 && py >= 1 && px <= 510 && py <= 510)
-                to.z = static_cast<float>(map.get_z(px, py));
+            if (px < 1 || py < 1 || px > 510 || py > 510) {
+                to.x = t->body.pos.x;
+                to.y = t->body.pos.y;
+            }
             leap_start(p, to, due, 3);
             const Vec3 at{p.body.pos.x, p.body.pos.y, p.body.pos.z + 0.6f};
             vapour(0, proto::SmokeStyle::Ground, at, 2, 0x80, 0x10,
@@ -4144,9 +4180,12 @@ struct Server::Impl {
 
     // The Boomer: a bladder on legs that walks the wave to the person,
     // the wall, or the core, and lights at whichever it meets first.
-    // The flare it walks under is a dark orange, and once the wick is
-    // lit its final stretch blinks plain red on the skin and the
-    // highlight both, quicker as it shortens; the end is a burst that
+    // The flare it walks under is a dark orange, and once the wick
+    // is lit the skin and the highlight blink a shade against its
+    // dim mate - plain red on red for the last stretch - while the
+    // mark it carries pulses the head the skin packs, the skull
+    // growing and returning quicker as the wick shortens; the end
+    // is a burst that
     // carves the ground it stood on and bites whatever stands in it,
     // its own side as much as the people's. A wall built to stop it
     // becomes the very thing it answers for: the wise shoot it while
@@ -4188,19 +4227,24 @@ struct Server::Impl {
             return;
         }
         // The blink, on a beat that quickens as the wick shortens:
-        // the last stretch of the wick flips plain red, the colour
-        // said on the skin and the highlight both at once, and a
-        // little smoke at its feet says the count aloud.
+        // the shade flips between a colour and its dim mate - plain
+        // red once the last stretch begins - and the flag the mark
+        // carries says the head itself, that the skin the player
+        // packs may pulse its skull at the beat and flash the black
+        // voxels of its head in the shade. A little smoke at its
+        // feet says the count aloud.
         if (world_time >= p.bomb_beat_at) {
             const double rest = p.bomb_at - world_time;
             const double beat = std::max(
                 0.12, rest * 0.5 / std::max(0.1, boomer_fuse));
             p.bomb_beat_at = world_time + beat;
             const bool red = rest <= boomer_red_lead;
-            p.bomb_red = red && !p.bomb_red;
-            const uint32_t shade =
-                p.bomb_red ? kBoomRed : kBoomOrange;
-            send_mark(p, shade, static_cast<uint8_t>(1));
+            p.bomb_red = !p.bomb_red;
+            const uint32_t shade = red
+                ? (p.bomb_red ? kBoomRed : kBoomRedDim)
+                : (p.bomb_red ? kBoomOrange : kBoomOrangeDim);
+            send_mark(p, shade,
+                      static_cast<uint8_t>(1) | kMarkHeadPulse);
             const Vec3 at{p.body.pos.x, p.body.pos.y,
                           p.body.pos.z + 0.5f};
             const uint8_t shade_r =

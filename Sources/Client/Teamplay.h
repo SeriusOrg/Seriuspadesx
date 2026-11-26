@@ -88,12 +88,18 @@ namespace spades {
 			 * minimap dot. */
 			static constexpr uint8_t kDefaultSurfaces = SurfaceWorld | SurfaceMinimap;
 
-			/** Flag bits carried by the ESP Mark sub-packet. Bits 2-7 are reserved. */
+			/** Flag bits carried by the ESP Mark sub-packet. Bits 3-7 are reserved. */
 			enum MarkFlag : uint8_t {
 				/** The mark ends the next time the marked player spawns. */
 				MarkFlagClearOnRespawn = 1 << 0,
 				/** The client shows the marked player's name. Clear, it must not. */
 				MarkFlagShowName = 1 << 1,
+				/** The marked player's head itself pulses: the third-person head
+				 * grows and returns each time the server renews the mark, and the
+				 * black voxels of the head model take the mark's colour while the
+				 * mark holds. A server renews the mark on each beat, so the pulse
+				 * runs at the beat's own pace, quickening with it. */
+				MarkFlagPulseHead = 1 << 2,
 			};
 
 			/** The only Message ID version 1 of the extension defines. The byte is
@@ -170,6 +176,11 @@ namespace spades {
 				bool clearOnRespawn;
 				/** The server permits the marked player's name to be shown. */
 				bool showName;
+				/** The head itself pulses on this mark (see MarkFlagPulseHead). */
+				bool pulseHead;
+				/** Seconds since the mark was last placed, renewed or not; drives
+				 * the head's pulse, so renewing the mark replays the grow. */
+				float age;
 			};
 
 			/** Pings currently on screen, keyed by the player who originated them: the

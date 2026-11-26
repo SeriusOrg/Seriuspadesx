@@ -43,7 +43,8 @@ namespace spades {
 
 			/** Likewise for the ESP Mark flags. */
 			constexpr uint8_t kKnownMarkFlags =
-			  Teamplay::MarkFlagClearOnRespawn | Teamplay::MarkFlagShowName;
+			  Teamplay::MarkFlagClearOnRespawn | Teamplay::MarkFlagShowName |
+			  Teamplay::MarkFlagPulseHead;
 		} // namespace
 
 		bool Teamplay::IsValidDuration(float duration) {
@@ -186,6 +187,8 @@ namespace spades {
 			mark.timeLeft = mark.endless ? 0.0F : duration;
 			mark.clearOnRespawn = (flags & MarkFlagClearOnRespawn) != 0;
 			mark.showName = (flags & MarkFlagShowName) != 0;
+			mark.pulseHead = (flags & MarkFlagPulseHead) != 0;
+			mark.age = 0.0F;
 		}
 
 		stmp::optional<const Teamplay::Mark&>
@@ -228,6 +231,7 @@ namespace spades {
 			}
 
 			for (auto it = marks.begin(); it != marks.end();) {
+				it->second.age += dt;
 				if (it->second.endless) {
 					++it;
 					continue;
