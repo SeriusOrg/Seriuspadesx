@@ -1761,6 +1761,11 @@ struct Server::Impl {
             tool.write_u8(static_cast<uint8_t>(p.id));
             tool.write_u8(static_cast<uint8_t>(kToolSpade));
             broadcast(tool, true);
+            // A brute stands out of the crowd from the door, its
+            // silhouette flared the colour of its skin - and the mark
+            // dies with the body, the slot free for the next walker.
+            if (p.brute >= 0 && tower_defense_mode())
+                send_mark(p, brute_flare(p.brute), 1);
         }
     }
 
@@ -5348,15 +5353,28 @@ struct Server::Impl {
         for (auto& o : players)
             if (o && o->peer && !o->loading && o->ext_teamplay) send(*o, bw);
     }
-    void send_mark(const Player& target) {
+    // The flare each brute walks under, the colour of its own skin:
+    // green, blue, purple, red, yellow.
+    static uint32_t brute_flare(int brute) {
+        switch (brute) {
+            case kSpitter: return 0x20FF60;
+            case kTank: return 0x3080FF;
+            case kHealer: return 0xA040FF;
+            case kLeaper: return 0xFF3030;
+            case kBreaker: return 0xFFD020;
+            default: return 0x20FF60;
+        }
+    }
+    void send_mark(const Player& target, uint32_t rgb = 0x20FF60,
+                   uint8_t flags = 0) {
         ByteWriter bw;
         bw.write_u8(static_cast<uint8_t>(PacketId::Teamplay));
         bw.write_u8(2);                       // ESP Mark
         bw.write_u8(static_cast<uint8_t>(target.id));
         bw.write_f32(std::numeric_limits<float>::infinity());
         bw.write_u8(1);                       // the body's outline
-        bw.write_u8(0);
-        write_color(bw, 0x20FF60);
+        bw.write_u8(flags);
+        write_color(bw, rgb);
         bw.write_u8(0);
         for (auto& o : players)
             if (o && o->peer && !o->loading && o->ext_teamplay) send(*o, bw);
@@ -6086,6 +6104,12 @@ struct Server::Impl {
         if (cfg.highlight_targets)
             for (auto& o : players)
                 if (o && o->aim_bot && o->alive) send_mark(*o);
+        // The brutes of a field in play stand flaring for the new eye
+        // as well, the same colours the field wears them in.
+        if (tower_defense_mode())
+            for (auto& o : players)
+                if (o && o->alive && o->zombie && o->brute >= 0)
+                    send_mark(*o, brute_flare(o->brute), 1);
         p.pinged_step = -1;   // the tutorial's next goal, pinged again
     }
 
