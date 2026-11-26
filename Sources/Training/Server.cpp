@@ -877,17 +877,23 @@ struct Server::Impl {
     static constexpr int kPerchRise = 4;
     // The boomer's rounds: the first wave of them, how often they come,
     // and the share of the ramp's dead one stands; then the wick and
-    // its reach of the trigger, and what the burst takes from the
-    // core when it reaches it. The burst itself is the grenade's own,
-    // drawn whole from nade::blast_damage: the same box of reach, the
-    // same fall with distance, the same wall between the blast and
-    // the body.
+    // its reach of the trigger, the last stretch of the wick that
+    // blinks plain red, and what the burst takes from the core when
+    // it reaches it. The burst itself is the grenade's own, drawn
+    // whole from nade::blast_damage: the same box of reach, the same
+    // fall with distance, the same wall between the blast and the
+    // body.
     int boomer_wave_first = 6;
     int boomer_wave_every = 5;
     int boomer_wave_scale = 60;
-    double boomer_fuse = 2.5;
+    double boomer_fuse = 8.0;
     double boomer_arm = 10.0;
+    double boomer_red_lead = 5.0;
     int boomer_core_hurt = 30;
+    // The colours of its flare: the dark orange it walks under, and
+    // the plain red its final stretch blinks.
+    static constexpr uint32_t kBoomOrange = 0xE06000;
+    static constexpr uint32_t kBoomRed = 0xFF2020;
     // A wick pressed against a wall lights after this long a stand.
     static constexpr double kBoomStuck = 1.0;
     // Where the people were, a ring per slot: a sample every kPastBeat,
@@ -2548,6 +2554,8 @@ struct Server::Impl {
                         5, static_cast<int>(number(value))));
                 } else if (key == "boomer_fuse") {
                     boomer_fuse = std::max(0.5, number(value));
+                } else if (key == "boomer_red_lead") {
+                    boomer_red_lead = std::max(0.5, number(value));
                 } else if (key == "boomer_arm") {
                     boomer_arm = std::max(1.0, number(value));
                 } else if (key == "boomer_core_hurt") {
@@ -4011,12 +4019,13 @@ struct Server::Impl {
 
     // The Boomer: a bladder on legs that walks the wave to the person,
     // the wall, or the core, and lights at whichever it meets first.
-    // The wick blinks pink to a dark red, quicker as it shortens, the
-    // flare saying its body aloud; the end is a burst that carves the
-    // ground it stood on and bites whatever stands in it, its own
-    // side as much as the people's. A wall built to stop it becomes
-    // the very thing it answers for: the wise shoot it while it is
-    // still out among its own.
+    // The flare it walks under is a dark orange, and once the wick is
+    // lit its final stretch blinks plain red on the skin and the
+    // highlight both, quicker as it shortens; the end is a burst that
+    // carves the ground it stood on and bites whatever stands in it,
+    // its own side as much as the people's. A wall built to stop it
+    // becomes the very thing it answers for: the wise shoot it while
+    // it is still out among its own.
     void boomer_tick(Player& p) {
         if (p.brute != kBoomer || !tower_defense_mode()) return;
         const int cx = static_cast<int>(std::floor(p.body.pos.x));
@@ -4053,22 +4062,26 @@ struct Server::Impl {
             kill(p, nullptr, kGrenadeKill);
             return;
         }
-        // The blink, on a beat that quickens as the wick shortens: a
+        // The blink, on a beat that quickens as the wick shortens:
+        // the last stretch of the wick flips plain red, the colour
+        // said on the skin and the highlight both at once, and a
         // little smoke at its feet says the count aloud.
         if (world_time >= p.bomb_beat_at) {
             const double rest = p.bomb_at - world_time;
             const double beat = std::max(
                 0.12, rest * 0.5 / std::max(0.1, boomer_fuse));
             p.bomb_beat_at = world_time + beat;
-            p.bomb_red = !p.bomb_red;
-            send_mark(p, p.bomb_red ? 0x701030u : 0xFF7FA0u,
-                      static_cast<uint8_t>(1));
+            const bool red = rest <= boomer_red_lead;
+            p.bomb_red = red && !p.bomb_red;
+            const uint32_t shade =
+                p.bomb_red ? kBoomRed : kBoomOrange;
+            send_mark(p, shade, static_cast<uint8_t>(1));
             const Vec3 at{p.body.pos.x, p.body.pos.y,
                           p.body.pos.z + 0.5f};
             vapour(0, proto::SmokeStyle::Ground, at, 1,
-                   p.bomb_red ? 0x70 : 0xFF,
-                   p.bomb_red ? 0x10 : 0x7F,
-                   p.bomb_red ? 0x30 : 0xA0, 0x50, 2, 1);
+                   static_cast<uint8_t>((shade >> 16) & 0xFFu),
+                   static_cast<uint8_t>((shade >> 8) & 0xFFu),
+                   static_cast<uint8_t>(shade & 0xFFu), 0x50, 2, 1);
         }
     }
 
@@ -4120,9 +4133,9 @@ struct Server::Impl {
         // four cells out, and the core standing in them pays.
         if (horde->near_core(bx, by, 4))
             horde->on_core_damaged(boomer_core_hurt);
-        // The say: a flash of its own pink, then the dust.
+        // The say: a flash of its own dark orange, then the dust.
         const Vec3 at{bx + 0.5f, by + 0.5f, bz + 1.0f};
-        vapour(0, proto::SmokeStyle::Cloud, at, 4, 0xFF, 0x7F, 0xA0,
+        vapour(0, proto::SmokeStyle::Cloud, at, 4, 0xE0, 0x60, 0x00,
                0xB0, 8, 2);
         vapour(1, proto::SmokeStyle::Ground, at, 5, 0x90, 0x90, 0x90,
                0x60, 25, 5);
@@ -5714,7 +5727,7 @@ struct Server::Impl {
             if (o && o->peer && !o->loading && o->ext_teamplay) send(*o, bw);
     }
     // The flare each brute walks under, the colour of its own skin:
-    // green, blue, purple, red, yellow, pink.
+    // green, blue, purple, red, yellow, dark orange.
     static uint32_t brute_flare(int brute) {
         switch (brute) {
             case kSpitter: return 0x20FF60;
@@ -5722,7 +5735,7 @@ struct Server::Impl {
             case kHealer: return 0xA040FF;
             case kLeaper: return 0xFF3030;
             case kBreaker: return 0xFFD020;
-            case kBoomer: return 0xFF7FA0;
+            case kBoomer: return kBoomOrange;
             default: return 0x20FF60;
         }
     }
