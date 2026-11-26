@@ -4461,6 +4461,34 @@ struct Server::Impl {
         const Player* ahead =
             p.brute == kSpitter || p.brute == kBreaker ||
             (p.brute == kLeaper && p.hunts) ? nullptr : pack_ahead;
+        // The hunt owns its hunter only while the field of it speaks
+        // at the feet: flooded from the person, over ground the legs
+        // themselves can walk, it holds no word about a perch, a
+        // tower, a town the person climbed or sealed beyond the
+        // reach of the walk. And silence is not a standstill the
+        // hunt answers: the press it leaves behind - straight at a
+        // wall the field has no word about - is a wedge no clock of
+        // the hunt opens, for the hunt never rode the mercy and
+        // never drew the spade. So a hunt gone silent hands its
+        // hunter to the road the whole pack walks - to the core,
+        // with the clocks, the spade and the mercy that road has
+        // always kept - and takes the hunter back the moment the
+        // field reads again: a breach the dead open, a step the
+        // person takes down off their perch, and the chase is on
+        // once more. A Spitter keeps its stand even so while its
+        // line rides - the arc crosses what the walk refuses - and
+        // a Leaper mid pattern keeps its two flights: the pattern
+        // owns its own air.
+        const bool hunts_mind = p.brute == kSpitter ||
+                                (p.brute == kLeaper && p.hunts);
+        const bool person_live =
+            hunt_focus_ != nullptr && hunt_focus_->alive;
+        const bool hunt_blind = hunts_mind &&
+            (!person_live ||
+             (p.leap_stage == 0 &&
+              horde->hunt_reach(cx, cy) < 0 &&
+              (p.brute == kLeaper ||
+               p.spit_off > kSpitOffShut)));
         if (ahead && ahead->id != p.id && ahead->zombie && ahead->alive) {
             // The heel held in the footsteps of the one ahead: a follower
             // is led by the prints its leader left - the threshold it
@@ -4607,8 +4635,7 @@ struct Server::Impl {
             // is a brute of a mind of its own, whose road was never the
             // walk: the hunt and the line hand the pack over first.
             p.ahead_id = -1;
-            if (p.brute == kSpitter ||
-                (p.brute == kLeaper && p.hunts)) {
+            if (hunts_mind && !hunt_blind) {
                 hand_pack_over(p);
                 hunt_tick(p, cx, cy, fz);
                 if (p.brute == kLeaper) leap_tick(p, cx, cy, fz);
@@ -4620,7 +4647,8 @@ struct Server::Impl {
                 // A walker stands in its shadow: the follower branch
                 // holds the healer at a heel from the next tick on.
             } else {
-                if (p.brute == kHealer) hand_pack_over(p);
+                if (p.brute == kHealer || hunt_blind)
+                    hand_pack_over(p);
             int tx = cx, ty = cy, tz = fz;
             // The field read from the footing - and when the feet are in
             // the air, or on a floor the walk has no opinion about, the
@@ -4734,17 +4762,39 @@ struct Server::Impl {
             // excused: the pacing is a standstill to the walk either way,
             // and only counted windows arm the hop, the fling, the spade's
             // licence and the line's disband to answer it.
-            const int score = fd >= 0 ? fd : horde->dig_distance(cx, cy, fz);
-            // A hunter's standstill is its design: the Spitter holds
-            // the band it spits from and the hunting Leaper coils or
-            // walks its chase, and neither of them owes the road to
-            // the core a single step. Every answer below - the hop,
-            // the fling, the mercy - reads that road, so a Spitter
-            // holding flat ground bounced on the spot through its
-            // whole stand. The hunt hops its own faces (hop_step
-            // above); the clocks stay quiet here.
-            const bool hunts_on_own =
-                p.brute == kSpitter || (p.brute == kLeaper && p.hunts);
+            // A hunter's standstill is its design only while the
+            // design itself stands: the hold of a Spitter with a
+            // riding line inside its band, and the coil and the
+            // flights of a Leaper mid pattern. Every other step a
+            // hunter takes is walking ground, owed the clocks of any
+            // walker - and scored on the hunt while the hunt speaks,
+            // on the road while the hunter walks it blind, for the
+            // pacing that gains none is the standstill the windows
+            // below are owed by. The hold that keeps a band bounces
+            // on the spot no longer, and the coil no longer springs
+            // on its own perch.
+            bool hunts_on_own = false;
+            if (hunts_mind && person_live) {
+                if (p.brute == kLeaper) {
+                    hunts_on_own = p.leap_stage != 0;
+                } else {
+                    const float hdx = hunt_focus_->body.pos.x -
+                                      p.body.pos.x;
+                    const float hdy = hunt_focus_->body.pos.y -
+                                      p.body.pos.y;
+                    const float hdd = std::sqrt(hdx * hdx + hdy * hdy);
+                    const float band = std::max(1.0f, std::min(
+                        kSpitHold, static_cast<float>(spitter.range)));
+                    hunts_on_own = p.spit_off <= kSpitOffShut &&
+                                  hdd <= band + 0.5f;
+                }
+            }
+            if (hunts_on_own) p.stuck_at = -1.0;
+            int score = fd >= 0 ? fd : horde->dig_distance(cx, cy, fz);
+            if (hunts_mind && !hunts_on_own && !hunt_blind) {
+                const int hunt_own = horde->hunt_reach(cx, cy);
+                if (hunt_own >= 0) score = hunt_own;
+            }
             // The dig watch, leader only: the milestone is a reading
             // kDigWatchGain lower than the one it holds, and that
             // alone winds it - the shuffle that hides a pack from the
@@ -4791,8 +4841,9 @@ struct Server::Impl {
             } else {
                 ++p.stall_windows;         // moving, maybe - nearer, never
             }
-            if (moved < 0.35f ||
-                p.stall_windows >= kZombieYoyoWindows) {
+            if (!hunts_on_own &&
+                (moved < 0.35f ||
+                 p.stall_windows >= kZombieYoyoWindows)) {
                 // The probe the map asked for: a window stood still says
                 // where the walker is, what each walk reads at its feet,
                 // what the advice hands back, and what every clock of
@@ -4888,11 +4939,11 @@ struct Server::Impl {
             // down (teleport_pinned above, for the prose of it).
             if (p.ahead_id < 0 && p.stuck_at >= 0.0 &&
                 world_time - p.stuck_at >= kStuckTeleport &&
-                // the mercy rides the road to the core, and the three
-                // minds that left the road never ride it back: the hunt
-                // stands its ground at a wall, and the breaker carves
-                p.brute != kSpitter && p.brute != kBreaker &&
-                (p.brute != kLeaper || !p.hunts))
+                // the mercy rides the road to the core: a hunter
+                // wedged on walking ground rides it like any walker,
+                // and only the stands the hunt itself designs stay
+                // off it - the breaker carves on its own clock
+                !hunts_on_own && p.brute != kBreaker)
                 teleport_pinned(p);
         }
     }
