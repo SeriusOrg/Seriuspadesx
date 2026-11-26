@@ -65,7 +65,7 @@ namespace spades {
 				Mascot, Tiger, Penguin, Bear, Unicorn, TRex, Banana, BlockStack,
 				Zombie = 64, Spitter, Leaper, Caller, Breaker,
 				// Not in the spec yet: asked for as the next zombie (Survive's brutes)
-				Toppler,
+				Toppler, Boomer,
 				Turret = 80, Projector, DishAntenna, MastAntenna,
 			};
 

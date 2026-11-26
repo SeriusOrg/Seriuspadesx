@@ -157,14 +157,22 @@ struct Config {
     // slots cannot stand is skipped at the raising, one at a time,
     // and never a wave that waits on it.
     int spawn_point_cap = kSpawnSites;
+    int wave_scale = 100;   // the share of the ramp a round walks
     static constexpr int kWaveMaxZombies = 250;
     int wave_target(int wave) const {
         const int w = (std::max)(1, wave);
+        int t;
         if (w <= 5)
-            return 5 + 5 * (w - 1);
-        if (w <= 10)
-            return 25 + 10 * (w - 5);
-        return 75 + 20 * (w - 10);
+            t = 5 + 5 * (w - 1);
+        else if (w <= 10)
+            t = 25 + 10 * (w - 5);
+        else
+            t = 75 + 20 * (w - 10);
+        // The host may stand a round thinner than the ramp counts:
+        // the scale is its own word, said between the waves, its
+        // floors kept honest however deep it cuts.
+        t = t * (std::max)(0, wave_scale) / 100;
+        return (std::max)(1, t);
     }
     int wave_points(int wave) const {
         int pool = kSpawnSites;
@@ -333,6 +341,8 @@ public:
     void on_zombie_killed();
     // The core took a hit. Its health floors at zero and Defeat follows.
     void on_core_damaged(int amount);
+    // The share of the ramp the coming wave stands, in percent.
+    void set_wave_scale(int percent) { cfg_.wave_scale = percent; }
     // A wave wiped by the host's own hand: nothing owed, nothing walking,
     // the core mended whole - and a Defeat called off with it, the
     // waiting back, so the next wave comes when the clock has it.

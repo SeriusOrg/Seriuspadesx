@@ -627,6 +627,11 @@ struct Player {
     double leap_due = 1.0;
     double leap_ready = 0.0;
     Vec3 leap_to{0.0f, 0.0f, 0.0f};
+    // The boomer's wick: when it burns out - -1 keeps it unlit - the
+    // beat it last blinked on, and the shade it wears this blink.
+    double bomb_at = -1.0;
+    double bomb_beat_at = 0.0;
+    bool bomb_red = false;
     // A brute stood by the word of a person, not by the wave: it walks
     // and bites all the same, yet the wave keeps its ledger without it.
     bool off_ledger = false;
@@ -752,7 +757,7 @@ struct EconomyTuning {
     int refund = 70;         // percent back at the word that takes down
 };
 
-// The brutes of the horde, five specials, each its own face and its own
+// The brutes of the horde, six specials, each its own face and its own
 // toll. A special with a chance set rolls its percentile once a wave for
 // a place - the chance itself climbing a notch a wave - and the rolls
 // grow by the wave the tuning says. One with no chance stands by count:
@@ -762,7 +767,7 @@ struct EconomyTuning {
 // waves until the wave the tuning names and walks beside it from there.
 // towerdefense.toml says all of it again, by the same word as the table
 // here.
-enum SpecialKind { kSpitter = 0, kTank, kHealer, kLeaper, kBreaker,
+enum SpecialKind { kSpitter = 0, kTank, kHealer, kLeaper, kBreaker, kBoomer,
                    kSpecialCount };
 struct SpecialTuning {
     const char* name = "";
@@ -870,6 +875,20 @@ struct Server::Impl {
     int leap_perch = 30;
     static constexpr float kLeapLift = 0.25f;
     static constexpr int kPerchRise = 4;
+    // The boomer's rounds: the first wave of them, how often they come,
+    // and the share of the ramp's dead one stands; then the wick and
+    // its reach of the trigger, the blast and what it takes from a
+    // body standing in it, and from the core when it reaches it.
+    int boomer_wave_first = 6;
+    int boomer_wave_every = 5;
+    int boomer_wave_scale = 60;
+    double boomer_fuse = 2.5;
+    double boomer_arm = 10.0;
+    double boomer_blast = 6.0;
+    int boomer_hurt = 60;
+    int boomer_core_hurt = 30;
+    // A wick pressed against a wall lights after this long a stand.
+    static constexpr double kBoomStuck = 1.0;
     // Where the people were, a ring per slot: a sample every kPastBeat,
     // held kPastKeep seconds. The lag of a spit reads a place a body
     // stood this long back, and only the still are caught where they
@@ -1440,15 +1459,18 @@ struct Server::Impl {
     std::vector<Turret> turrets;
     TurretTuning turret_cfg;
     EconomyTuning economy;
-    // The five brutes, as the table above reads them; the waves draw the
-    // specials of a wave from it. The tank wears the plain Zombie set as
-    // a placeholder, until its own model stands.
+    // The six brutes, as the table above reads them; the waves draw the
+    // specials of a common wave from it. The boomer owns no place in
+    // that plan - it walks only the rounds the tuning gives it whole.
+    // The tank wears the plain Zombie set as a placeholder, until its
+    // own model stands.
     SpecialTuning specials[kSpecialCount] = {
         {"Spitter", 65, 5, 5, 0, 0, 0, 0, 2, 10, 5, 7, 100},
         {"Tank", 69, 10, 3, 0, 0, 0, 0, 0, 3, 1, 0, 10},
         {"Healer", 67, 8, 10, 0, 0, 0, 0, 0, 0, 0, 0, 100},
         {"Leaper", 66, 6, 7, 30, 3, 12, 3, 0, 0, 0, 0, 100},
         {"Breaker", 68, 7, 8, 60, 0, 0, 0, 0, 0, 0, 0, 100},
+        {"Boomer", 70, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     };
     int healer_tank_together = 20;  // both bullies stand from this wave on
     // The specials the wave rides: one takes the tread of the grunt it
@@ -1840,6 +1862,10 @@ struct Server::Impl {
         bw.write_u8(static_cast<uint8_t>(std::min(255, static_cast<int>(delay) + 1)));
         broadcast(bw, true);
         if (by && by != &p) by->kills += 1;
+        // A boomer dies as it lived: loudly. Any road out of the
+        // world ends in the burst, the shot as much as the wick.
+        if (p.zombie && p.brute == kBoomer && tower_defense_mode())
+            boom_blast(p);
         if (p.zombie) {
             p.respawn_at = -1;
             p.free_slot_at = world_time + delay;
@@ -2510,6 +2536,27 @@ struct Server::Impl {
                 } else if (key == "leaper_leap_perch") {
                     leap_perch = std::min(128, std::max(
                         10, static_cast<int>(number(value))));
+                } else if (key == "boomer_wave_first") {
+                    boomer_wave_first = std::max(
+                        1, static_cast<int>(number(value)));
+                } else if (key == "boomer_wave_every") {
+                    boomer_wave_every = std::max(
+                        0, static_cast<int>(number(value)));
+                } else if (key == "boomer_wave_scale") {
+                    boomer_wave_scale = std::min(100, std::max(
+                        5, static_cast<int>(number(value))));
+                } else if (key == "boomer_fuse") {
+                    boomer_fuse = std::max(0.5, number(value));
+                } else if (key == "boomer_arm") {
+                    boomer_arm = std::max(1.0, number(value));
+                } else if (key == "boomer_blast") {
+                    boomer_blast = std::max(1.0, number(value));
+                } else if (key == "boomer_hurt") {
+                    boomer_hurt = std::max(
+                        1, static_cast<int>(number(value)));
+                } else if (key == "boomer_core_hurt") {
+                    boomer_core_hurt = std::max(
+                        0, static_cast<int>(number(value)));
                 }
                 continue;
             }
@@ -2543,13 +2590,14 @@ struct Server::Impl {
             economy.per_kill, economy.start, economy.wave_bonus,
             economy.price_base, economy.price_step,
             economy.upgrade[0], economy.upgrade[1], economy.refund);
-        log("towerdefense.toml: specials first waves %d/%d/%d/%d/%d, "
-            "bounties %d/%d/%d/%d/%d",
+        log("towerdefense.toml: specials first waves %d/%d/%d/%d/%d/%d, "
+            "bounties %d/%d/%d/%d/%d/%d",
             specials[0].first_wave, specials[1].first_wave,
             specials[2].first_wave, specials[3].first_wave,
-            specials[4].first_wave, specials[0].bounty,
-            specials[1].bounty, specials[2].bounty, specials[3].bounty,
-            specials[4].bounty);
+            specials[4].first_wave, specials[5].first_wave,
+            specials[0].bounty, specials[1].bounty,
+            specials[2].bounty, specials[3].bounty,
+            specials[4].bounty, specials[5].bounty);
         log("towerdefense.toml: spitter spit every %.1f, span %d-%d, "
             "lag %.1f, speed %.1f, acid %.2f of a hurt, melts in %.1f, "
             "pool %d",
@@ -3965,6 +4013,127 @@ struct Server::Impl {
                0x10, 0x70, 3, 2);
     }
 
+    // The Boomer: a bladder on legs that walks the wave to the person,
+    // the wall, or the core, and lights at whichever it meets first.
+    // The wick blinks pink to a dark red, quicker as it shortens, the
+    // flare saying its body aloud; the end is a burst that carves the
+    // ground it stood on and bites whatever stands in it, its own
+    // side as much as the people's. A wall built to stop it becomes
+    // the very thing it answers for: the wise shoot it while it is
+    // still out among its own.
+    void boomer_tick(Player& p) {
+        if (p.brute != kBoomer || !tower_defense_mode()) return;
+        const int cx = static_cast<int>(std::floor(p.body.pos.x));
+        const int cy = static_cast<int>(std::floor(p.body.pos.y));
+        const int fz = static_cast<int>(std::floor(
+            p.body.pos.z + 2.25f));
+        if (p.bomb_at < 0.0) {
+            // The unlit wick: a person in its reach, a wall it has
+            // pressed against, or the core underfoot light it.
+            bool met = false;
+            for (auto& q : players) {
+                if (!q || !q->alive || q->zombie) continue;
+                const float dx = q->body.pos.x - p.body.pos.x;
+                const float dy = q->body.pos.y - p.body.pos.y;
+                if (dx * dx + dy * dy <=
+                    static_cast<float>(boomer_arm) *
+                    static_cast<float>(boomer_arm)) {
+                    met = true;
+                    break;
+                }
+            }
+            const bool pinned = p.stuck_at >= 0.0 &&
+                                world_time - p.stuck_at >= kBoomStuck;
+            if (met || pinned || zombie_at_core(cx, cy, fz)) {
+                p.bomb_at = world_time + boomer_fuse;
+                p.bomb_beat_at = world_time;
+                p.bomb_red = true;
+            }
+            return;
+        }
+        if (world_time >= p.bomb_at) {
+            // The burst: it dies on its own word, and the fall says
+            // the rest.
+            kill(p, nullptr, kGrenadeKill);
+            return;
+        }
+        // The blink, on a beat that quickens as the wick shortens: a
+        // little smoke at its feet says the count aloud.
+        if (world_time >= p.bomb_beat_at) {
+            const double rest = p.bomb_at - world_time;
+            const double beat = std::max(
+                0.12, rest * 0.5 / std::max(0.1, boomer_fuse));
+            p.bomb_beat_at = world_time + beat;
+            p.bomb_red = !p.bomb_red;
+            send_mark(p, p.bomb_red ? 0x701030u : 0xFF7FA0u,
+                      static_cast<uint8_t>(1));
+            const Vec3 at{p.body.pos.x, p.body.pos.y,
+                          p.body.pos.z + 0.5f};
+            vapour(0, proto::SmokeStyle::Ground, at, 1,
+                   p.bomb_red ? 0x70 : 0xFF,
+                   p.bomb_red ? 0x10 : 0x7F,
+                   p.bomb_red ? 0x30 : 0xA0, 0x50, 2, 1);
+        }
+    }
+
+    void boom_blast(Player& p) {
+        const Vec3 c{p.body.pos.x, p.body.pos.y, p.body.pos.z};
+        const int bx = static_cast<int>(std::floor(c.x));
+        const int by = static_cast<int>(std::floor(c.y));
+        const int bz = static_cast<int>(std::floor(c.z));
+        // The dig: a hole two blocks each way and four high, brooked
+        // by nothing, the core's own column kept whole against it.
+        std::vector<Cell> removed;
+        bool dug = false;
+        for (int dx = -2; dx <= 2; ++dx)
+            for (int dy = -2; dy <= 2; ++dy)
+                for (int dz = -3; dz <= 0; ++dz) {
+                    const int X = bx + dx;
+                    const int Y = by + dy;
+                    const int Z = bz + dz;
+                    if (!map.solid(X, Y, Z)) continue;
+                    if (core_column_cell(X, Y, Z)) continue;
+                    map.destroy_point(X, Y, Z, &removed);
+                    ByteWriter bw;
+                    bw.write_u8(static_cast<uint8_t>(PacketId::BlockAction));
+                    bw.write_u8(static_cast<uint8_t>(p.id));
+                    bw.write_u8(static_cast<uint8_t>(kDestroyBlock));
+                    bw.write_i32(X);
+                    bw.write_i32(Y);
+                    bw.write_i32(Z);
+                    broadcast(bw, true);
+                    dug = true;
+                }
+        if (dug) touched(removed, false);
+        // The bite: every body standing in the blast, the dead side's
+        // own as much as the people's, worn the worse the closer it
+        // stands - a boomer caught in a boomer's burst goes with it,
+        // the chain ending where the blast no longer reaches.
+        for (auto& q : players) {
+            if (!q || !q->alive || q.get() == &p) continue;
+            if (!q->playing()) continue;
+            const float dx = q->body.pos.x - c.x;
+            const float dy = q->body.pos.y - c.y;
+            const float dz = q->body.pos.z - c.z;
+            const float d = std::sqrt(dx * dx + dy * dy + dz * dz);
+            if (d > static_cast<float>(boomer_blast)) continue;
+            const int hurt =
+                static_cast<int>(static_cast<double>(boomer_hurt) *
+                (1.0 - static_cast<double>(d) / boomer_blast)) + 1;
+            set_hp(*q, q->hp - hurt, nullptr, kGrenadeKill, &c);
+        }
+        // The core, when the burst reaches its ground.
+        if (horde->near_core(
+                bx, by, static_cast<int>(boomer_blast) + 1))
+            horde->on_core_damaged(boomer_core_hurt);
+        // The say: a flash of its own pink, then the dust.
+        const Vec3 at{bx + 0.5f, by + 0.5f, bz + 1.0f};
+        vapour(0, proto::SmokeStyle::Cloud, at, 4, 0xFF, 0x7F, 0xA0,
+               0xB0, 8, 2);
+        vapour(1, proto::SmokeStyle::Ground, at, 5, 0x90, 0x90, 0x90,
+               0x60, 25, 5);
+    }
+
     // The Breaker: the core is the road entire, and the line between is
     // walked as straight as the map allows the aim - no field, no
     // advice, no detour a cliff asks for, and falls are walked honestly
@@ -5181,6 +5350,8 @@ struct Server::Impl {
             return;   // no way in: a wave that cannot walk holds no brutes
         for (int k = 0; k < kSpecialCount; ++k) {
             const SpecialTuning& s = specials[static_cast<size_t>(k)];
+            if (k == kBoomer)
+                continue;   // it comes with its own rounds, never a plan
             if (wave < s.first_wave) continue;
             int want = 0;
             if (s.chance > 0) {
@@ -5239,8 +5410,23 @@ struct Server::Impl {
         }
     }
 
+    // The rounds the boomers own: a wave in every boomer_wave_every
+    // from the first, built of their kind alone, and thinned to the
+    // scale the tuning stands for what it walks. The word is given
+    // between the waves, while the coming one is still on the cloth.
+    bool boomer_wave(int wave) const {
+        return tower_defense_mode() && boomer_wave_every > 0 &&
+               wave >= boomer_wave_first &&
+               (wave - boomer_wave_first) % boomer_wave_every == 0;
+    }
+
     // The wave's announcements, its spawns, and its dead slots given back.
     void horde_tick() {
+        if (tower_defense_mode() &&
+            horde->phase() != horde::Phase::Wave)
+            horde->set_wave_scale(boomer_wave(horde->wave() + 1)
+                                      ? boomer_wave_scale
+                                      : 100);
         horde->tick(world_time);
         // The focus of the hunt: the person the hunters hold nearest most
         // between them - one name for the one field every hunter walks,
@@ -5313,6 +5499,11 @@ struct Server::Impl {
                             std::snprintf(text, sizeof text,
                                           "Wave %d: no way in the walk can take",
                                           horde->wave());
+                        } else if (boomer_wave(horde->wave())) {
+                            std::snprintf(text, sizeof text,
+                                          "Wave %d: %d boomers coming",
+                                          horde->wave(),
+                                          static_cast<int>(horde->placed()));
                         } else {
                             std::snprintf(text, sizeof text, "Wave %d: %d zombies coming",
                                           horde->wave(),
@@ -5408,6 +5599,10 @@ struct Server::Impl {
                 if (!special_due.empty()) {
                     add_zombie(s, special_due.front());
                     special_due.erase(special_due.begin());
+                } else if (boomer_wave(horde->wave())) {
+                    // The round is the boomer's own: each tread a
+                    // bladder, its dead thinned to its own scale.
+                    add_zombie(s, kBoomer);
                 } else {
                     add_zombie(s);
                 }
@@ -5525,7 +5720,7 @@ struct Server::Impl {
             if (o && o->peer && !o->loading && o->ext_teamplay) send(*o, bw);
     }
     // The flare each brute walks under, the colour of its own skin:
-    // green, blue, purple, red, yellow.
+    // green, blue, purple, red, yellow, pink.
     static uint32_t brute_flare(int brute) {
         switch (brute) {
             case kSpitter: return 0x20FF60;
@@ -5533,6 +5728,7 @@ struct Server::Impl {
             case kHealer: return 0xA040FF;
             case kLeaper: return 0xFF3030;
             case kBreaker: return 0xFFD020;
+            case kBoomer: return 0xFF7FA0;
             default: return 0x20FF60;
         }
     }
@@ -5659,6 +5855,7 @@ struct Server::Impl {
             if (!p.alive) continue;
             if (p.zombie) zombie_bite(p);
             if (p.zombie) spitter_tick(p);
+            if (p.zombie) boomer_tick(p);
             if (p.body.pos.z > 64.0f || !finite3(p.body.pos)) kill(p, nullptr, kFallKill);
         }
         if (aim_mode()) aim_tick(dt);
