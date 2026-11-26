@@ -896,6 +896,11 @@ struct Server::Impl {
     double boomer_arm = 10.0;
     double boomer_red_lead = 5.0;
     int boomer_core_hurt = 30;
+    // The boomer's own short chase: inside this many blocks of a
+    // living person, the pack's road to the core ends and the
+    // person's own ground begins - the burst is a tooth of contact,
+    // and the chase is the road that runs it home.
+    double boomer_chase = 30.0;
     // The colours of its flare: the dark orange it walks under, and
     // the plain red its final stretch blinks.
     static constexpr uint32_t kBoomOrange = 0xE06000;
@@ -2528,7 +2533,8 @@ struct Server::Impl {
                     key == "boomer_wave_first" ||
                     key == "boomer_wave_every" || key == "boomer_wave_scale" ||
                     key == "boomer_fuse" || key == "boomer_red_lead" ||
-                    key == "boomer_arm" || key == "boomer_core_hurt")
+                    key == "boomer_arm" || key == "boomer_core_hurt" ||
+                    key == "boomer_chase")
                     kind = -1;
                 if (kind >= 0) {
                     // What the key still holds after the name: the field.
@@ -2611,6 +2617,8 @@ struct Server::Impl {
                         5, static_cast<int>(number(value))));
                 } else if (key == "boomer_fuse") {
                     boomer_fuse = std::max(0.5, number(value));
+                } else if (key == "boomer_chase") {
+                    boomer_chase = std::max(0.0, number(value));
                 } else if (key == "boomer_red_lead") {
                     boomer_red_lead = std::max(0.5, number(value));
                 } else if (key == "boomer_arm") {
@@ -3932,8 +3940,10 @@ struct Server::Impl {
     // through, as it never was for the pack. The word of the field
     // steers first; the straight press at the person is the word a
     // walker falls back to where the field holds its silence. The
-    // Leaper presses the whole way, to the teeth; the Spitter holds
-    // its own ground inside the reach of the spit and lets the acid close.
+    // Leaper presses the whole way, to the teeth; a Boomer handed the
+    // chase presses the same, for its burst is a tooth of contact; the
+    // Spitter holds its own ground inside the reach of the spit and
+    // lets the acid close.
     // A stair either way is hopped where the face reads it, and the
     // common answers hold - the hop, the fling - all but the road:
     // the mercy rides the walk to the core, and the hunt never rides.
@@ -3974,7 +3984,8 @@ struct Server::Impl {
             p.input.mf = true;
             p.input.sprint = false;
         } else {
-            p.input.mf = p.brute == kLeaper || d > band_stand || !breath;
+            p.input.mf = p.brute == kLeaper || p.brute == kBoomer ||
+                          d > band_stand || !breath;
             p.input.sprint = d > kHuntSprint;
         }
         if (!p.body.airborne) hop_step(p, cx, cy, fz);
@@ -4500,11 +4511,25 @@ struct Server::Impl {
         // walks clean past the band it was made to keep. Its own hunt
         // is its road - the stand, the arc, the walk for a riding
         // line - so it hands the pack on and walks the hunt alone.
+        // The Boomer's short chase: inside the reach the tuning draws,
+        // the person's own ground is its road - the burst is a tooth
+        // of contact, and neither the pack's prints nor the road to
+        // the core hold it out of the wick's way. Outside that reach
+        // it walks the pack's road like any walker of the ramp.
+        const bool boomer_chases =
+            p.brute == kBoomer && hunt_focus_ != nullptr &&
+            hunt_focus_->alive &&
+            (hunt_focus_->body.pos.x - p.body.pos.x) *
+                (hunt_focus_->body.pos.x - p.body.pos.x) +
+            (hunt_focus_->body.pos.y - p.body.pos.y) *
+                (hunt_focus_->body.pos.y - p.body.pos.y) <=
+            static_cast<float>(boomer_chase * boomer_chase);
         Player* pack_ahead = p.ahead_id >= 0
             ? players[static_cast<size_t>(p.ahead_id)].get() : nullptr;
         const Player* ahead =
             p.brute == kSpitter || p.brute == kBreaker ||
-            (p.brute == kLeaper && p.hunts) ? nullptr : pack_ahead;
+            (p.brute == kLeaper && p.hunts) || boomer_chases
+                ? nullptr : pack_ahead;
         // The hunt owns its hunter only while the field of it speaks
         // at the feet: flooded from the person, over ground the legs
         // themselves can walk, it holds no word about a perch, a
@@ -4677,12 +4702,16 @@ struct Server::Impl {
             // Nobody to follow: it is the pack's leader now, and the field
             // leads it - around the cliffs, when it can - unless the walker
             // is a brute of a mind of its own, whose road was never the
-            // walk: the hunt and the line hand the pack over first.
+            // walk: the hunt, the Boomer's short chase and the line
+            // hand the pack over first.
             p.ahead_id = -1;
             if (hunts_mind && !hunt_blind) {
                 hand_pack_over(p);
                 hunt_tick(p, cx, cy, fz);
                 if (p.brute == kLeaper) leap_tick(p, cx, cy, fz);
+            } else if (boomer_chases) {
+                hand_pack_over(p);
+                hunt_tick(p, cx, cy, fz);
             } else if (p.brute == kBreaker) {
                 hand_pack_over(p);
                 breaker_tick(p, cx, cy, fz);
@@ -5681,11 +5710,14 @@ struct Server::Impl {
         // between them - one name for the one field every hunter walks,
         // read fresh every tick. Nobody hunting or nobody living means
         // no name, and the field stands down and the hunters stand.
+        // The Boomer holds no share of the hunt but its own short one:
+        // it votes only inside the reach of its chase, and a pack with
+        // no hunter left still finds a name for its boomer to run at.
         hunt_focus_ = nullptr;
         std::vector<int> votes(players.size(), 0);
         for (auto& z : players) {
             if (!z || !z->alive || !z->zombie) continue;
-            if (z->brute != kSpitter &&
+            if (z->brute != kSpitter && z->brute != kBoomer &&
                 (z->brute != kLeaper || !z->hunts)) continue;
             Player* t = nullptr;
             float bd = -1.0f;
@@ -5700,7 +5732,10 @@ struct Server::Impl {
                     t = qq.get();
                 }
             }
-            if (t != nullptr) ++votes[static_cast<size_t>(t->id)];
+            if (t != nullptr &&
+                (z->brute != kBoomer ||
+                 bd <= static_cast<float>(boomer_chase * boomer_chase)))
+                ++votes[static_cast<size_t>(t->id)];
         }
         int focus_votes = 0;
         for (size_t i = 0; i < players.size(); ++i) {

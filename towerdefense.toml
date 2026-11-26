@@ -185,3 +185,7 @@ boomer_fuse = 8.0
 boomer_red_lead = 5.0
 boomer_arm = 10.0
 boomer_core_hurt = 30
+# Within boomer_chase blocks of a person the road turns from the core
+# to them: the chase walks the hunt's own field at their ground, for
+# the wick it lights at their feet is the whole tooth it carries.
+boomer_chase = 30.0
