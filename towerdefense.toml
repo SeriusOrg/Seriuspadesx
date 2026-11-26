@@ -136,21 +136,25 @@ healer_with_tank_wave = 20
 healer_reach = 20.0
 breaker_stroke = 1.5
 
-# The Leaper, the red one: most walk with the pack like a grunt, and
-# leaper_hunt_chance in a hundred are born hunters of the living.
+# The Leaper, the red one: every one of them is born a hunter of the
+# living and walks its own chase, never with the pack; the share in
+# leaper_hunt_chance may soften it back.
 leaper_first_wave = 7
-leaper_hunt_chance = 20
-leaper_chance = 30
-leaper_chance_grow = 3
-leaper_rolls_wave = 12
+leaper_hunt_chance = 100
+leaper_chance = 40
+leaper_chance_grow = 4
+leaper_rolls_wave = 10
 leaper_rolls_every = 3
 leaper_bounty = 6
-# The hunters leap: a flight out to a perch that stands above the
-# person, a squatting coil that says the pounce is coming, then the
-# pounce itself, aimed where the person is going.
+# The hunters leap: the chase walks the map until the person stands
+# about leaper_leap_country blocks off, then a flight lands on the
+# ground of a perch that stands above the person, one to three seconds
+# of squatting coil - leaper_leap_hold holds the floor of the wait -
+# and the pounce itself, aimed where the person is going.
 leaper_leap_every = 8.0
-leaper_leap_hold = 0.8
+leaper_leap_hold = 1.0
 leaper_leap_perch = 30
+leaper_leap_country = 50
 
 # The Breaker, the yellow one, on its straight road to the core.
 breaker_first_wave = 8

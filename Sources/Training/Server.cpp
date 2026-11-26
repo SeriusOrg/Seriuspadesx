@@ -863,16 +863,22 @@ struct Server::Impl {
     uint8_t heal_bed_next = 0;
     float healer_reach = 20.0f;
     double breaker_stroke = 1.5;
-    // How many leapers in a hundred are born hunters of the living.
-    int leaper_hunt_chance = 20;
-    // The hunter's own arc: how long between leaps, how long the coil
-    // holds its pounce, and how distant a perch it aims from the
-    // person when the chase reads the ring around them. The lift is
-    // the rise a flight owes the sky, and the rise a perch must stand
-    // above the person's own ground.
+    // Every leaper is born a hunter of the living; the share in a
+    // hundred may soften it back for a gentler chase.
+    int leaper_hunt_chance = 100;
+    // The hunter's own arc: how long between leaps, how long the
+    // coil holds its pounce - the floor of a wait drawn out to
+    // three seconds, that the person earns their beat to read the
+    // squat - how distant a perch it aims from the person when the
+    // chase reads the ring around them, and how distant the person
+    // stands before the two flights begin at all: the chase walks
+    // the map until then. The lift is the rise a flight owes the
+    // sky, and the rise a perch must stand above the person's own
+    // ground.
     double leap_every = 8.0;
-    double leap_hold = 0.8;
+    double leap_hold = 1.0;
     int leap_perch = 30;
+    int leap_country = 50;
     static constexpr float kLeapLift = 0.25f;
     static constexpr int kPerchRise = 4;
     // The boomer's rounds: the first wave of them, how often they come,
@@ -1475,7 +1481,7 @@ struct Server::Impl {
         {"Spitter", 65, 5, 5, 0, 0, 0, 0, 2, 10, 5, 7, 100},
         {"Tank", 69, 10, 3, 0, 0, 0, 0, 0, 3, 1, 0, 10},
         {"Healer", 67, 8, 10, 0, 0, 0, 0, 0, 0, 0, 0, 100},
-        {"Leaper", 66, 6, 7, 30, 3, 12, 3, 0, 0, 0, 0, 100},
+        {"Leaper", 66, 6, 7, 40, 4, 10, 3, 0, 0, 0, 0, 100},
         {"Breaker", 68, 7, 8, 60, 0, 0, 0, 0, 0, 0, 0, 100},
         {"Boomer", 70, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     };
@@ -2485,7 +2491,9 @@ struct Server::Impl {
                 if (key == "healer_with_tank_wave" || key == "healer_reach" ||
                     key == "breaker_stroke" || key == "leaper_hunt_chance" ||
                     key == "leaper_leap_every" || key == "leaper_leap_hold" ||
-                    key == "leaper_leap_perch" || key == "boomer_wave_first" ||
+                    key == "leaper_leap_perch" ||
+                    key == "leaper_leap_country" ||
+                    key == "boomer_wave_first" ||
                     key == "boomer_wave_every" || key == "boomer_wave_scale" ||
                     key == "boomer_fuse" || key == "boomer_red_lead" ||
                     key == "boomer_arm" || key == "boomer_core_hurt")
@@ -2557,6 +2565,9 @@ struct Server::Impl {
                 } else if (key == "leaper_leap_perch") {
                     leap_perch = std::min(128, std::max(
                         10, static_cast<int>(number(value))));
+                } else if (key == "leaper_leap_country") {
+                    leap_country = std::min(128, std::max(
+                        20, static_cast<int>(number(value))));
                 } else if (key == "boomer_wave_first") {
                     boomer_wave_first = std::max(
                         1, static_cast<int>(number(value)));
@@ -3709,6 +3720,69 @@ struct Server::Impl {
                     " home the spade walk holds",
                     p.id, cx, cy, fz);
             }
+            // The ring takes what the road cannot serve: a head
+            // pinned where the spade walk holds no trace home - a
+            // bridge, a plateau, a roof the maze raised it onto -
+            // keeps its line shelved behind it to the end of time,
+            // for no other mercy was written for it. So the ground
+            // itself is read instead: ring by ring around the stuck
+            // spot, the first floor either walk counts, and the
+            // whole line rides there - back on a road, a stride
+            // from where it stood, whatever terrain had swallowed
+            // it.
+            int bx = -1, by = 0, bz = 0;
+            for (int r = 2; bx < 0 && r <= 32; ++r) {
+                for (int dx = -r; dx <= r && bx < 0; ++dx) {
+                    const int ex = r - std::abs(dx);
+                    for (int dy = -ex; dy <= ex; ++dy) {
+                        if (std::abs(dy) != ex && std::abs(dx) != r)
+                            continue;   // the ring alone: the inner
+                                        // rings were read before
+                        const int qx = cx + dx, qy = cy + dy;
+                        if (qx < 0 || qy < 0 || qx > 511 || qy > 511)
+                            continue;
+                        const int zl = horde->stand_floor(qx, qy);
+                        if (zl < 0) continue;
+                        if (horde->distance(qx, qy, zl) < 0 &&
+                            horde->distance(qx, qy, zl - 1) < 0 &&
+                            horde->dig_distance(qx, qy, zl) < 0 &&
+                            horde->dig_distance(qx, qy, zl - 1) < 0)
+                            continue;   // neither walk counts it
+                        bx = qx; by = qy; bz = zl;
+                        break;
+                    }
+                }
+            }
+            if (bx < 0) return;   // no counted ground around: stands
+            std::vector<Player*> line{&p};
+            for (size_t k = 0; k < line.size(); ++k) {
+                const int ahead = line[k]->id;
+                for (auto& q : players) {
+                    if (!q || !q->zombie || !q->alive) continue;
+                    if (q->ahead_id != ahead) continue;
+                    line.push_back(q.get());
+                }
+            }
+            const Vec3 dest{static_cast<float>(bx) + 0.5f,
+                            static_cast<float>(by) + 0.5f,
+                            static_cast<float>(bz) - 2.4f};
+            for (Player* q : line) {
+                q->body = physics::Body{};
+                q->body.pos = dest;
+                q->body.eye = dest;
+                q->input = physics::Input{};
+                q->foot_dist = -1;
+                q->stall_windows = 0;
+                q->stuck_at = -1.0;
+                q->dig_watch_at = -1.0;
+                q->detour_at = -1.0;
+                q->walk_ref = dest;
+                q->walk_ref_at = world_time;
+                q->teleport_at = world_time;
+                q->spade_at = -1e9;
+            }
+            log("the ring carried a pinned pack back to a walk at"
+                " %d, %d", bx, by);
             return;
         }
         for (size_t i = kTeleportAhead; i < route.size(); ++i) {
@@ -3899,6 +3973,16 @@ struct Server::Impl {
     // pounce itself, an arc at where the person is going. Every leg is
     // loud: the perch is plain to see, the coil plainer in its squat,
     // and both buy the hunted their beat to move.
+    // The coil between the two flights: a squat held one to three
+    // seconds, the tuning holds its floor and the draw rides on
+    // top of it - the person earns their beat to read the squat
+    // and move before the pounce takes them.
+    double coil_hold() {
+        const double draw =
+            std::uniform_real_distribution<double>(0.0, 1.0)(rng);
+        return leap_hold + std::max(0.0, 3.0 - leap_hold) * draw;
+    }
+
     void leap_start(Player& p, const Vec3& to, const double due,
                     const int stage) {
         p.leap_stage = stage;
@@ -3921,7 +4005,7 @@ struct Server::Impl {
             p.body.vel = Vec3{0.0f, 0.0f, 0.0f};
             if (p.leap_stage == 1) {
                 p.leap_stage = 2;
-                p.leap_until = world_time + leap_hold;
+                p.leap_until = world_time + coil_hold();
             } else {
                 p.leap_stage = 0;
                 p.leap_ready = world_time + leap_every;
@@ -3985,10 +4069,15 @@ struct Server::Impl {
         const float perch = static_cast<float>(leap_perch);
         if (sd < perch * 0.5f) {
             p.leap_stage = 2;
-            p.leap_until = world_time + leap_hold;
+            p.leap_until = world_time + coil_hold();
             return;
         }
-        if (sd > perch * 2.0f) return;   // out of its country: it walks
+        // The country of the pattern: the chase walks the map until
+        // the person stands about this many blocks off, and only
+        // then do the two flights begin - the perch first, the
+        // pounce from it.
+        if (sd > static_cast<float>(leap_country))
+            return;   // out of its country: it walks the map
         // The perch ring: a ledge kPerchRise above the person's own
         // ground, set perch out around them, its own side preferred.
         const int px = static_cast<int>(std::floor(t->body.pos.x));
@@ -4624,13 +4713,23 @@ struct Server::Impl {
             // and only counted windows arm the hop, the fling, the spade's
             // licence and the line's disband to answer it.
             const int score = fd >= 0 ? fd : horde->dig_distance(cx, cy, fz);
+            // A hunter's standstill is its design: the Spitter holds
+            // the band it spits from and the hunting Leaper coils or
+            // walks its chase, and neither of them owes the road to
+            // the core a single step. Every answer below - the hop,
+            // the fling, the mercy - reads that road, so a Spitter
+            // holding flat ground bounced on the spot through its
+            // whole stand. The hunt hops its own faces (hop_step
+            // above); the clocks stay quiet here.
+            const bool hunts_on_own =
+                p.brute == kSpitter || (p.brute == kLeaper && p.hunts);
             // The dig watch, leader only: the milestone is a reading
             // kDigWatchGain lower than the one it holds, and that
             // alone winds it - the shuffle that hides a pack from the
             // stuck clock gains nothing it can cash here. Pacing where
             // neither walk reads stands the watch down: no milestone,
             // no licence owed for feet with nowhere to dig.
-            if (p.ahead_id < 0 && score >= 0) {
+            if (!hunts_on_own && p.ahead_id < 0 && score >= 0) {
                 if (p.dig_watch_at < 0.0 ||
                     score <= p.dig_watch_dist - kDigWatchGain) {
                     p.dig_watch_at = world_time;
@@ -4648,7 +4747,7 @@ struct Server::Impl {
             // march that prices fair, a spade field gone silent, a
             // head off the walk or a follower in line stands the
             // clock down - the road is the road again.
-            if (p.ahead_id < 0 && fd >= 0) {
+            if (!hunts_on_own && p.ahead_id < 0 && fd >= 0) {
                 const int dd = horde->dig_distance(cx, cy, fz);
                 if (dd >= 0 && fd >= dd + kDigDetour) {
                     if (p.detour_at < 0.0) p.detour_at = world_time;
@@ -4658,7 +4757,7 @@ struct Server::Impl {
             } else if (p.detour_at >= 0.0) {
                 p.detour_at = -1.0;       // no weighing to hold
             }
-            if (p.ahead_id >= 0 || p.body.airborne) {
+            if (hunts_on_own || p.ahead_id >= 0 || p.body.airborne) {
                 p.foot_dist = -1;          // off the walk or a step in line
                 p.stall_windows = 0;
             } else if (score < 0) {
