@@ -4092,20 +4092,20 @@ struct Server::Impl {
             send_mark(p, shade, static_cast<uint8_t>(1));
             const Vec3 at{p.body.pos.x, p.body.pos.y,
                           p.body.pos.z + 0.5f};
-            const uint8_t red =
+            const uint8_t shade_r =
                 static_cast<uint8_t>((shade >> 16) & 0xFFu);
-            const uint8_t green =
+            const uint8_t shade_g =
                 static_cast<uint8_t>((shade >> 8) & 0xFFu);
-            const uint8_t blue =
+            const uint8_t shade_b =
                 static_cast<uint8_t>(shade & 0xFFu);
             // The bed at its feet stays, thicker than before, and a
             // column of its own colour rises off its head at every
             // beat: the beats themselves quicken as the wick goes,
             // so the plume pulses the count out loud.
             vapour(0, proto::SmokeStyle::Ground, at, 2,
-                   red, green, blue, 0x70, 2, 1);
+                   shade_r, shade_g, shade_b, 0x70, 2, 1);
             vapour(1, proto::SmokeStyle::Column, at, 1,
-                   red, green, blue, 0xC0, 15, 5);
+                   shade_r, shade_g, shade_b, 0xC0, 15, 5);
         }
     }
 
