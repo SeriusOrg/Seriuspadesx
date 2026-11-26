@@ -20,6 +20,8 @@
 
 #include "ClientMenu.h"
 #include "ModsWindow.h"
+#include "StoreWindow.h"
+#include <Client/Client.h>
 #include <Client/ClientUI.h>
 #include <Client/ClientUIHelper.h>
 #include <Client/Fonts.h>
@@ -125,7 +127,18 @@ namespace spades {
 				button->activated = [this](UIElement& s) { OnMods(s); };
 				AddChild(button.GetPointerOrNull());
 			}
-			float rowY = winY + 128.0F;
+			{
+				// The Tower Defense store: only in a world that speaks it, which
+				// the server says by carrying the store's own state.
+				Handle<Button> button = Handle<Button>::New(manager);
+				button->caption = _Tr("Client", "Store");
+				button->SetBounds(AABB2(winX, winY + 128.0F, winW, 30.0F));
+				button->activated = [this](UIElement& s) { OnStore(s); };
+				button->visible = false;   // until the store's state is heard
+				storeButton = button.GetPointerOrNull();
+				AddChild(button.GetPointerOrNull());
+			}
+			float rowY = winY + 160.0F;
 			if (forVR) {
 				Handle<Button> button = Handle<Button>::New(manager);
 				button->caption = _Tr("Client", "Controls");
@@ -193,6 +206,18 @@ namespace spades {
 			window->Run();
 		}
 
+		void ClientMenu::OnStore(UIElement&) {
+			if (escHint)
+				escHint->visible = false; // hide while the page is up
+
+			Handle<StoreWindow> window = Handle<StoreWindow>::New(this, ui);
+			window->closed = [this](UIElement&) {
+				if (escHint)
+					escHint->visible = true;
+			};
+			window->Run();
+		}
+
 		void ClientMenu::OnChatLog(UIElement&) { ui->EnterChatLogWindow(); }
 
 		void ClientMenu::OnDisconnect(UIElement&) { ui->shouldExit = true; }
@@ -232,6 +257,14 @@ namespace spades {
 
 		void ClientMenu::Render() {
 			UIElement::Render();
+
+			// The store stands in a tower defense world, and the server says so
+			// by being the only kind that carries the store's own state.
+			if (storeButton != nullptr) {
+				const bool speaks = ui->client != nullptr &&
+				                    ui->client->GetStoreState().received;
+				storeButton->visible = speaks;
+			}
 
 			IFont& guiFont = ui->GetFontManager().GetGuiFont();
 			IFont& headingFont = ui->GetFontManager().GetHeadingFont();

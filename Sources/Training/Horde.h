@@ -343,6 +343,10 @@ public:
     void on_core_damaged(int amount);
     // The share of the ramp the coming wave stands, in percent.
     void set_wave_scale(int percent) { cfg_.wave_scale = percent; }
+    // The core's ceiling raised: the plating a player buys in the store
+    // stands, so both the maximum and the health carried rise together
+    // and a full-health core gains the whole thing.
+    void add_core_max_hp(int amount);
     // A wave wiped by the host's own hand: nothing owed, nothing walking,
     // the core mended whole - and a Defeat called off with it, the
     // waiting back, so the next wave comes when the clock has it.

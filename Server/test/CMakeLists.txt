@@ -67,4 +67,5 @@ endif()
 
 add_custom_target(zs_tests DEPENDS
 	vr_state_test xr_caps_test vr_pose_fixture update_package_test training_server_test
-	server_extension_key_test horde_test)
+	server_extension_key_test horde_test
+	store_catalog_test store_server_test)

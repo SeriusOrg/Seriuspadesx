@@ -128,6 +128,10 @@ namespace spades {
 			 * owed the flag and the tent of its base whatever its
 			 * StateData said. */
 			static constexpr std::uint8_t kSubCore = 5;
+			/** One player's Tower Defense store: the Zedcred purse, the wave and
+			 * core standing, and which upgrades are already bought. Sent to
+			 * each player on their own, since the purse differs. */
+			static constexpr std::uint8_t kSubStore = 6;
 
 			/** The stop flag for a new smoke; an id in use stops the old one. */
 			std::shared_ptr<bool> Start(int id);

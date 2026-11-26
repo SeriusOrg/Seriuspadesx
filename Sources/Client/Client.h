@@ -46,6 +46,7 @@
 #include "PieMenuView.h"
 #include "PlayerOutfit.h"
 #include "Smoke.h"
+#include "StoreState.h"
 #include "Trail.h"
 #include "VRNetProtocol.h"
 #include "VRState.h"
@@ -101,6 +102,7 @@ namespace spades {
 			friend class ClientPlayer;
 			friend class ClientUI;
 			friend class SentryEntity;
+		friend class StoreWindow;
 
 			/** used to keep the input state of keypad so that
 			 * after user pressed left and right, and then
@@ -233,6 +235,12 @@ namespace spades {
 			// The Smoke extension's paths (version 2): the ways in this
 			// client draws on its own, a line a front.
 			TrailLayer trails;
+
+			/** The Tower Defense store's standing, as the Smoke extension's
+			 * sixth sub packet said it last: the Zedcred purse, the wave and the
+			 * core, and which upgrades this player already owns. Stays empty
+			 * (`received` false) on any server that does not speak the store. */
+			StoreState storeState;
 
 			// player state
 			PlayerInput playerInput;
@@ -1246,6 +1254,13 @@ namespace spades {
 			 * SentryEntity.cpp, like StartSmoke's half of this. */
 			void ApplyTurrets(std::vector<ServerTurret> guns);
 			void ServerTurretFired(std::uint8_t id);
+
+			/** The Tower Defense store's standing applied whole: the purse, the
+			 * wave and core, and every upgrade this player owns. The store UI
+			 * reads it; the server is the only writer. Defined in Smoke.cpp,
+			 * beside the turret apply it follows. */
+			void ApplyStoreState(const StoreState& state) { storeState = state; }
+			const StoreState& GetStoreState() const { return storeState; }
 
 			/** The model sets the Player Models extension has assigned. */
 			const PlayerOutfits& GetPlayerOutfits() const { return playerOutfits; }

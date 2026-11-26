@@ -337,4 +337,71 @@ void write_core(ByteWriter& bw, uint16_t x, uint16_t y, uint8_t z) {
     bw.write_u8(z);
 }
 
+void write_store(ByteWriter& bw, const StoreState& state) {
+    bw.write_u8(static_cast<uint8_t>(PacketId::Smoke));
+    bw.write_u8(static_cast<uint8_t>(SmokeSub::Store));
+    bw.write_u16(state.zedcred);
+    bw.write_u8(state.wave);
+    bw.write_u8(state.phase);
+    bw.write_u16(state.core_hp);
+    bw.write_u16(state.core_max_hp);
+    bw.write_u8(state.weapon);
+    bw.write_u8(state.grenades);
+    bw.write_u8(state.blocks);
+    const uint8_t count = state.owned_count > 64 ? 64 : state.owned_count;
+    bw.write_u8(count);
+    for (uint8_t k = 0; k < count; ++k) {
+        bw.write_u8(state.owned[k].index);
+        bw.write_u8(state.owned[k].level);
+    }
+}
+
+bool read_store(ByteReader& br, StoreState& state) {
+    // The whole packet as write_store wrote it: the Smoke id and its Store
+    // sub, then the body. The client has already eaten the id and the sub
+    // byte by the time it reaches the store, which is why the body has a
+    // reader of its own - read_store_body, below.
+    if (!br.can_read(2)) return false;
+    if (br.read_u8() != static_cast<uint8_t>(PacketId::Smoke)) return false;
+    if (br.read_u8() != static_cast<uint8_t>(SmokeSub::Store)) return false;
+    return read_store_body(br, state);
+}
+
+bool read_store_body(ByteReader& br, StoreState& state) {
+    // zedcred, wave, phase, core hp/max, gun, grenades, blocks, then the
+    // count: twelve bytes, and every one of them asked for before it is
+    // read rather than read and hoped. Twelve bytes with no pairs, so a
+    // fresh player who owns nothing is a Store of twelve - and it is the
+    // first thing a new world ever says.
+    if (!br.can_read(12)) return false;
+    const uint16_t zedcred = br.read_u16();
+    const uint8_t wave = br.read_u8();
+    const uint8_t phase = br.read_u8();
+    const uint16_t core_hp = br.read_u16();
+    const uint16_t core_max = br.read_u16();
+    const uint8_t weapon = br.read_u8();
+    const uint8_t grenades = br.read_u8();
+    const uint8_t blocks = br.read_u8();
+    const int count = br.read_u8();
+    // Two bytes a pair, and only as many as the table can name: a longer
+    // list is a truncation, and the reader says so rather than overrunning.
+    if (count > 64) return false;
+    if (!br.can_read(2 * static_cast<size_t>(count))) return false;
+    state = StoreState{};
+    state.zedcred = zedcred;
+    state.wave = wave;
+    state.phase = phase;
+    state.core_hp = core_hp;
+    state.core_max_hp = core_max;
+    state.weapon = weapon;
+    state.grenades = grenades;
+    state.blocks = blocks;
+    state.owned_count = static_cast<uint8_t>(count);
+    for (int k = 0; k < count; ++k) {
+        state.owned[k].index = br.read_u8();
+        state.owned[k].level = br.read_u8();
+    }
+    return true;
+}
+
 } // namespace proto

@@ -57,6 +57,8 @@ DEFINE_SPADES_SETTING(cg_serverlistSort, "16385");
 // For tests: start Training the first time the main menu shows, as a headset
 // with no command line has no other way to be put straight into a game.
 DEFINE_SPADES_SETTING(cg_debugStartTraining, "0");
+// For tests: start Tower Defense the first time the main menu shows.
+DEFINE_SPADES_SETTING(cg_debugStartTowerDefense, "0");
 // Aim training's gun (0 rifle, 1 SMG, 2 shotgun) and whether its targets are
 // outlined, as last picked on Training's page.
 DEFINE_SPADES_SETTING(cg_aimWeapon, "0");
@@ -1646,6 +1648,11 @@ namespace spades {
 			if ((int)cg_debugStartAim >= 0 && !debugAimStarted) {
 				debugAimStarted = true;
 				StartAimScenario((int)cg_debugStartAim);
+			}
+			static bool debugTowerDefenseStarted = false;
+			if ((int)cg_debugStartTowerDefense && !debugTowerDefenseStarted) {
+				debugTowerDefenseStarted = true;
+				StartTowerDefense();
 			}
 			// Whichever page is up: the course started from the home screen is
 			// waited for and joined from here.

@@ -300,7 +300,10 @@ void write_set_outfit(ByteWriter& bw, uint8_t player, uint8_t outfit);
 // flags' bit 0 carries the hiss - a trail carries none, or the way in
 // is a racket rather than a marker. Only ever sent to a connection
 // that claimed the extension.
-enum class SmokeSub : uint8_t { Smoke = 0, Clear = 1, Path = 2, Turret = 3, TurretShot = 4, Core = 5 };
+enum class SmokeSub : uint8_t {
+    Smoke = 0, Clear = 1, Path = 2, Turret = 3, TurretShot = 4, Core = 5,
+    Store = 6
+};
 enum class SmokeStyle : uint8_t { Cloud = 0, Column = 1, Ground = 2,
                                   Blast = 3, Spray = 4 };
 // The whole packet, id included: one smoke started.
@@ -362,5 +365,51 @@ void write_turret_shot(ByteWriter& bw, uint8_t turret_id);
 // the same cell StateData would name, so a client that heard it and a
 // client that joined after draw the one flag.
 void write_core(ByteWriter& bw, uint16_t x, uint16_t y, uint8_t z);
+
+// --- Store state (Smoke sub 6) ---------------------------------------------
+// One player's view of the Tower Defense store. Sent to EACH player on its
+// own (the credits differ), on change and every five seconds so a client
+// that finishes loading mid-game recovers. The owned levels are indexed by
+// StoreCatalog::kItems; the wire carries only as many as the writer knows.
+struct StoreState {
+    struct Owned {
+        uint8_t index = 0;     // index into StoreCatalog::kItems
+        uint8_t level = 0;     // times bought (0 = not owned)
+    };
+    bool operator==(const StoreState& o) const {
+        if (zedcred != o.zedcred || wave != o.wave || phase != o.phase)
+            return false;
+        if (core_hp != o.core_hp || core_max_hp != o.core_max_hp) return false;
+        if (weapon != o.weapon || grenades != o.grenades ||
+            blocks != o.blocks) return false;
+        if (owned_count != o.owned_count) return false;
+        for (uint8_t k = 0; k < owned_count; ++k)
+            if (owned[k].index != o.owned[k].index ||
+                owned[k].level != o.owned[k].level)
+                return false;
+        return true;
+    }
+    uint16_t zedcred = 0;      // the player's Zedcred purse (capped 65535)
+    uint8_t wave = 0;          // the wave the horde stands at
+    uint8_t phase = 0;         // horde::Phase as an integer
+    uint16_t core_hp = 0;      // the core's health, for the status line
+    uint16_t core_max_hp = 0;
+    uint8_t weapon = 0;        // the current gun, 0 rifle 1 SMG 2 shotgun
+    uint8_t grenades = 0;      // carried, for the consumable cards
+    uint8_t blocks = 0;        // building blocks carried (capped at 50)
+    uint8_t owned_count = 0;   // number of owned level pairs following
+    Owned owned[64] = {};      // capped to 64, which exceeds the catalogue
+};
+// The whole packet, id included. `count` says how many of `owned` are real.
+void write_store(ByteWriter& bw, const StoreState& state);
+// The same, read back: the whole packet, id included, into `state`. False
+// when the packet is not one the store recognises, having read nothing.
+bool read_store(ByteReader& br, StoreState& state);
+// The body alone, with neither the packet id nor the sub packet byte: for
+// the reader that has already been told what it is reading - the client's
+// Smoke dispatcher has eaten both by the time the store's turn comes, so
+// this is the one it needs. The two cannot drift: the whole-packet reader
+// above is this one with the two bytes in front of it.
+bool read_store_body(ByteReader& br, StoreState& state);
 
 } // namespace proto

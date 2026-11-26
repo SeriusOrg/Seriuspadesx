@@ -104,6 +104,12 @@ struct Input {
     // which in the wire enum is the SMG... because pyspades' own constant is
     // misnamed. It means "is the tool the gun", and this flag says so plainly.
     bool holding_gun = false;
+    // The pace this body is stepped at, as a scale on its own speed. One
+    // for everybody, unless the Tower Defense store has sold Light feet:
+    // the server scales the walk the perk buys without telling the wire,
+    // so the client and the server must run the same arithmetic on the
+    // same number, which they read from the same table.
+    float move_scale = 1.0f;
 };
 
 // A player, as the physics sees one.

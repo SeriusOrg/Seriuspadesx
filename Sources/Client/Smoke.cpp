@@ -31,6 +31,9 @@
 #include "CTFGameMode.h"
 #include "IAudioDevice.h"
 #include "NetProtocol.h"
+#include "StoreState.h"
+#include "StoreParser.h"
+#include <Training/Protocol.h>
 #include "World.h"
 #include "SentryEntity.h"
 #include "SmokeSpriteEntity.h"
@@ -358,6 +361,29 @@ namespace spades {
 						                                      z + 1.0F);
 					}
 				} break;
+				case SmokeRegistry::kSubStore: {
+				// The store's own word, which only a tower defense world
+				// speaks. One player's purse, the wave and core, and every
+				// upgrade they own.
+				//
+				// The packet id and this sub packet byte have both been
+				// eaten already - the dispatcher took the id, and the
+				// switch above took the sub - so what is left is the
+				// store's body, and that is what is read. Asking for the
+				// whole packet here instead would have the reader looking
+				// at the purse's first two bytes and calling them a packet
+				// id, which is how a store can arrive and be dropped.
+				const std::size_t from = r.GetPosition();
+				const uint8_t* body =
+				  reinterpret_cast<const uint8_t*>(r.GetData().data()) + from;
+				const std::size_t body_len = r.GetNumRemainingBytes();
+				StoreState state;
+				if (!ParseStoreBody(body, body_len, state)) {
+					SPLog("Dropped a Store the store could not read");
+					return;
+				}
+				client.ApplyStoreState(state);
+			} break;
 				default:
 					SPLog("Ignoring an unknown Smoke sub packet %d", sub);
 					break;

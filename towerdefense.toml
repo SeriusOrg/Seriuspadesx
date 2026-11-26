@@ -61,6 +61,37 @@ upgrade2_price = 30
 # taking it down returns.
 turret_refund = 70
 
+# The store: what each card asks in Zedcreds, differing from the catalogue
+# the server carries when a host says so. Free means free.
+
+[store]
+
+price_rifle = 0
+price_smg = 20
+price_shotgun = 30
+price_rifle_dmg1 = 25
+price_rifle_dmg2 = 40
+price_smg_dmg1 = 30
+price_smg_dmg2 = 45
+price_shotgun_dmg1 = 35
+price_shotgun_dmg2 = 50
+price_ammo = 5
+price_grenades = 6
+price_hp1 = 15
+price_hp2 = 25
+price_hp3 = 40
+price_speed1 = 20
+price_speed2 = 35
+price_health = 8
+price_blocks = 4
+price_repair = 12
+price_core_hp1 = 18
+price_core_hp2 = 30
+price_core_hp3 = 50
+price_turret1 = 5
+price_turret2 = 10
+price_turret3 = 30
+
 # The brutes of the horde, the specials of the waves. Each name reads
 # its own words: the first wave it stands in, and the Zedcred its kill
 # pays over the grunt rate. A brute of the chance rolls a d100 for its

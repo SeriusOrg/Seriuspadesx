@@ -39,6 +39,7 @@ namespace spades {
 		class ClientMenu;
 		class ChatLogWindow;
 		class ClientChatWindow;
+		class StoreWindow;
 		class VRControlsWindow;
 
 		class ClientUI : public gui::IGameModeUI {
@@ -46,6 +47,7 @@ namespace spades {
 			friend class ClientMenu;
 			friend class ChatLogWindow;
 			friend class ClientChatWindow;
+			friend class StoreWindow;
 
 			Handle<IRenderer> renderer;
 			Handle<IAudioDevice> audioDevice;

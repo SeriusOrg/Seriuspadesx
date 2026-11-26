@@ -57,3 +57,26 @@ if(WIN32)
 		_CRT_SECURE_NO_WARNINGS _WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 add_test(NAME training_server COMMAND training_server_test)
+
+# The Tower Defense store's catalogue, and the store on a real server: an
+# empty world ticking (a regression this pair exists for), then one player
+# buying a gun with Zedcreds. Built like the server test above, on request and
+# run by CTest.
+foreach(test_name store_catalog store_server)
+	add_executable(${test_name}_test EXCLUDE_FROM_ALL
+		"${CMAKE_CURRENT_SOURCE_DIR}/../../Server/test/${test_name}_test.cpp"
+		${TRAINING_TEST_ENET})
+	target_include_directories(${test_name}_test PRIVATE
+		"${CMAKE_CURRENT_SOURCE_DIR}/.."
+		"${CMAKE_CURRENT_SOURCE_DIR}/../ENet/include")
+	target_link_libraries(${test_name}_test PRIVATE training_server)
+	set_target_properties(${test_name}_test PROPERTIES
+		CXX_STANDARD 17
+		CXX_STANDARD_REQUIRED ON
+		FOLDER tests)
+	if(WIN32)
+		target_compile_definitions(${test_name}_test PRIVATE NOMINMAX
+			WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS _WINSOCK_DEPRECATED_NO_WARNINGS)
+	endif()
+	add_test(NAME ${test_name} COMMAND ${test_name}_test)
+endforeach()

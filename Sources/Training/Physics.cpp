@@ -213,6 +213,9 @@ StepResult step(const SolidMap& map, Body& b, const Input& in, float dt) {
     else if (in.sprint)                             f *= 1.3f;
 
     if ((in.mf || in.mb) && (in.ml || in.mr)) f *= kDiagonal;
+    // The pace the caller asks for, as a scale on the acceleration: Light
+    // feet's own. One for everybody unless the store has sold it.
+    f *= in.move_scale;
 
     float sx, sy;
     strafe_vector(b.ori, sx, sy);

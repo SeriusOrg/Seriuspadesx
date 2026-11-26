@@ -1595,6 +1595,17 @@ void Horde::on_core_damaged(int amount) {
     }
 }
 
+void Horde::add_core_max_hp(int amount) {
+    if (amount <= 0)
+        return;
+    // The ceiling and the carried health rise together: plating bought on
+    // a full core is worth the whole of it, and a wounded one is mended by
+    // the same step. The ceiling lives on the config, so the wave
+    // announcements that read it read what stands now.
+    cfg_.core_hp += amount;
+    core_hp_ = (std::min)(cfg_.core_hp, core_hp_ + amount);
+}
+
 void Horde::clear_wave(double now) {
     pending_.clear();
     up_ = 0;
