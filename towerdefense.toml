@@ -145,6 +145,12 @@ leaper_chance_grow = 3
 leaper_rolls_wave = 12
 leaper_rolls_every = 3
 leaper_bounty = 6
+# The hunters leap: a flight out to a perch that stands above the
+# person, a squatting coil that says the pounce is coming, then the
+# pounce itself, aimed where the person is going.
+leaper_leap_every = 8.0
+leaper_leap_hold = 0.8
+leaper_leap_perch = 30
 
 # The Breaker, the yellow one, on its straight road to the core.
 breaker_first_wave = 8

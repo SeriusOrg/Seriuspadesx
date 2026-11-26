@@ -618,6 +618,15 @@ struct Player {
     // pack like any grunt, a rare few hunt the living on their own -
     // which one it is, the spawner draws at the turn of the roll.
     bool hunts = false;
+    // The hunter's leap: the leg it stands on - none, the flight out to
+    // the perch, the coil upon it, the flight of the pounce itself -
+    // and, for a flight, the place it lands, the seconds it owes, and
+    // the earliest the chase may ask for its perch again.
+    int leap_stage = 0;
+    double leap_until = -1.0;
+    double leap_due = 1.0;
+    double leap_ready = 0.0;
+    Vec3 leap_to{0.0f, 0.0f, 0.0f};
     // A brute stood by the word of a person, not by the wave: it walks
     // and bites all the same, yet the wave keeps its ledger without it.
     bool off_ledger = false;
@@ -851,6 +860,16 @@ struct Server::Impl {
     double breaker_stroke = 1.5;
     // How many leapers in a hundred are born hunters of the living.
     int leaper_hunt_chance = 20;
+    // The hunter's own arc: how long between leaps, how long the coil
+    // holds its pounce, and how distant a perch it aims from the
+    // person when the chase reads the ring around them. The lift is
+    // the rise a flight owes the sky, and the rise a perch must stand
+    // above the person's own ground.
+    double leap_every = 8.0;
+    double leap_hold = 0.8;
+    int leap_perch = 30;
+    static constexpr float kLeapLift = 0.25f;
+    static constexpr int kPerchRise = 4;
     // Where the people were, a ring per slot: a sample every kPastBeat,
     // held kPastKeep seconds. The lag of a spit reads a place a body
     // stood this long back, and only the still are caught where they
@@ -879,7 +898,9 @@ struct Server::Impl {
     bool job_running = false;
     uint64_t job_rev = 0;
     std::shared_ptr<const std::vector<uint8_t>> job_result;
-    const uint32_t team_color[2] = {0x0000C4, 0x00C400};
+    // The dead side wears a darker green, a shade off the grass they
+    // walk on, that what moves on the field stays easy to tell apart.
+    const uint32_t team_color[2] = {0x0000C4, 0x1B5E20};
 
     // Aim: the run as the server keeps it; published to cfg.aim every tick.
     training::AimStatus aim;
@@ -2075,6 +2096,9 @@ struct Server::Impl {
             p->hunts =
                 std::uniform_int_distribution<int>(0, 99)(rng) <
                 leaper_hunt_chance;
+            // A hunter born on the doorstep takes a breath before its
+            // first arc: the person earns their eye on the chase.
+            p->leap_ready = world_time + 2.0;
         }
         p->off_ledger = off_ledger;
         // Single file behind the pack of its corner: a zombie with
@@ -2479,6 +2503,13 @@ struct Server::Impl {
                 } else if (key == "leaper_hunt_chance") {
                     leaper_hunt_chance = std::min(
                         100, std::max(0, static_cast<int>(number(value))));
+                } else if (key == "leaper_leap_every") {
+                    leap_every = std::max(0.5, number(value));
+                } else if (key == "leaper_leap_hold") {
+                    leap_hold = std::max(0.1, number(value));
+                } else if (key == "leaper_leap_perch") {
+                    leap_perch = std::min(128, std::max(
+                        10, static_cast<int>(number(value))));
                 }
                 continue;
             }
@@ -3795,6 +3826,145 @@ struct Server::Impl {
         }
     }
 
+    // The hunter's leap, a leaper's own: the arc the chase takes when
+    // the ground around the person lends it. Two flights and a stand
+    // between them - the flight out to a perch that stands above the
+    // person, the coil upon it that says the pounce is owed, and the
+    // pounce itself, an arc at where the person is going. Every leg is
+    // loud: the perch is plain to see, the coil plainer in its squat,
+    // and both buy the hunted their beat to move.
+    void leap_start(Player& p, const Vec3& to, const double due,
+                    const int stage) {
+        p.leap_stage = stage;
+        p.leap_until = world_time + due;
+        p.leap_due = due;
+        p.leap_to = to;
+        const float dx = to.x - p.body.pos.x;
+        const float dy = to.y - p.body.pos.y;
+        const float l = std::sqrt(dx * dx + dy * dy);
+        if (l > 1e-3f) p.body.ori = Vec3{dx / l, dy / l, 0.0f};
+        if (!p.body.airborne) p.input.jump = true;
+    }
+
+    void leap_fly(Player& p) {
+        const double left = p.leap_until - world_time;
+        const double gone = p.leap_due - left;
+        if (left <= 0.0 || (!p.body.airborne && gone > 0.1)) {
+            // The touchdown, or the ground that never let it go: the
+            // perch coil stands next, or the chase walks on again.
+            p.body.vel = Vec3{0.0f, 0.0f, 0.0f};
+            if (p.leap_stage == 1) {
+                p.leap_stage = 2;
+                p.leap_until = world_time + leap_hold;
+            } else {
+                p.leap_stage = 0;
+                p.leap_ready = world_time + leap_every;
+            }
+            return;
+        }
+        // The flight steers itself whole: every tick its own line and
+        // its own speed, the share of what it still owes - and a lift
+        // at the takeoff that thins on the way, so the road reads as
+        // an arc in the air, never a throw of a dice.
+        double hold = left;
+        if (hold < 0.02) hold = 0.02;
+        const float inv = 32.0f * static_cast<float>(hold);
+        p.input = physics::Input{};
+        p.body.vel.x = (p.leap_to.x - p.body.pos.x) / inv;
+        p.body.vel.y = (p.leap_to.y - p.body.pos.y) / inv;
+        p.body.vel.z = (p.leap_to.z - p.body.pos.z) / inv -
+                       kLeapLift * static_cast<float>(hold);
+    }
+
+    void leap_tick(Player& p, int cx, int cy, int fz) {
+        // The flights steer themselves; this is the rest of it.
+        if (p.leap_stage == 1 || p.leap_stage == 3) return;
+        const Player* t = hunt_focus_;
+        if (t == nullptr || !t->alive) {
+            if (p.leap_stage == 2) p.leap_stage = 0;
+            return;   // nobody to spring at: the hunt stands
+        }
+        const float sdx = t->body.pos.x - p.body.pos.x;
+        const float sdy = t->body.pos.y - p.body.pos.y;
+        const float sd = std::sqrt(sdx * sdx + sdy * sdy);
+        if (p.leap_stage == 2) {
+            // The coil: it squats its ground, the person given their
+            // beat to read it, and the spring takes the line to where
+            // the person is going, not where they stand.
+            p.input = physics::Input{};
+            p.input.crouch = true;
+            if (sd > 1e-3f)
+                p.body.ori = Vec3{sdx / sd, sdy / sd, 0.0f};
+            if (world_time < p.leap_until) return;
+            const double due =
+                std::max(0.4, std::min(1.5, static_cast<double>(sd) / 20.0));
+            const float lead = static_cast<float>(due) * 0.7f;
+            const int px = static_cast<int>(std::floor(
+                t->body.pos.x + t->body.vel.x * 32.0f * lead));
+            const int py = static_cast<int>(std::floor(
+                t->body.pos.y + t->body.vel.y * 32.0f * lead));
+            Vec3 to{px + 0.5f, py + 0.5f, t->body.pos.z};
+            if (px >= 1 && py >= 1 && px <= 510 && py <= 510)
+                to.z = static_cast<float>(map.get_z(px, py));
+            leap_start(p, to, due, 3);
+            const Vec3 at{p.body.pos.x, p.body.pos.y, p.body.pos.z + 0.6f};
+            vapour(0, proto::SmokeStyle::Ground, at, 2, 0x80, 0x10,
+                   0x10, 0x70, 3, 2);
+            return;
+        }
+        // The chase asks for its perch: no arc while the cooldown
+        // stands, no arc in the air, and the person closer than half
+        // a perch earns the coil at once, sprung from the ground.
+        if (world_time < p.leap_ready || p.body.airborne) return;
+        const float perch = static_cast<float>(leap_perch);
+        if (sd < perch * 0.5f) {
+            p.leap_stage = 2;
+            p.leap_until = world_time + leap_hold;
+            return;
+        }
+        if (sd > perch * 2.0f) return;   // out of its country: it walks
+        // The perch ring: a ledge kPerchRise above the person's own
+        // ground, set perch out around them, its own side preferred.
+        const int px = static_cast<int>(std::floor(t->body.pos.x));
+        const int py = static_cast<int>(std::floor(t->body.pos.y));
+        const int stand = map.get_z(px, py);
+        int best_x = -1, best_y = 0, best_z = stand;
+        double best = 0.0;
+        static constexpr double kPi = 3.141592653589793;
+        for (int a = 0; a < 24; ++a) {
+            const double ang = a * (2.0 * kPi / 24.0);
+            const int qx = px + static_cast<int>(std::lround(
+                std::cos(ang) * leap_perch));
+            const int qy = py + static_cast<int>(std::lround(
+                std::sin(ang) * leap_perch));
+            if (qx < 1 || qy < 1 || qx > 510 || qy > 510) continue;
+            const int qz = map.get_z(qx, qy);
+            if (qz > stand - kPerchRise) continue;   // no ledge there
+            const double side =
+                (qx - px) * (p.body.pos.x - t->body.pos.x) +
+                (qy - py) * (p.body.pos.y - t->body.pos.y);
+            const double score =
+                (stand - qz) + (side > 0.0 ? 2.0 : 0.0);
+            if (score > best) {
+                best = score;
+                best_x = qx;
+                best_y = qy;
+                best_z = qz;
+            }
+        }
+        if (best_x < 0) return;   // nothing stands: it keeps walking
+        const Vec3 to{best_x + 0.5f, best_y + 0.5f,
+                      static_cast<float>(best_z)};
+        const double due = std::max(0.8, std::min(2.2,
+            static_cast<double>(std::sqrt(
+                (to.x - p.body.pos.x) * (to.x - p.body.pos.x) +
+                (to.y - p.body.pos.y) * (to.y - p.body.pos.y))) / 20.0));
+        leap_start(p, to, due, 1);
+        const Vec3 at{p.body.pos.x, p.body.pos.y, p.body.pos.z + 0.6f};
+        vapour(0, proto::SmokeStyle::Ground, at, 2, 0x80, 0x10,
+               0x10, 0x70, 3, 2);
+    }
+
     // The Breaker: the core is the road entire, and the line between is
     // walked as straight as the map allows the aim - no field, no
     // advice, no detour a cliff asks for, and falls are walked honestly
@@ -4128,6 +4298,7 @@ struct Server::Impl {
                 (p.brute == kLeaper && p.hunts)) {
                 hand_pack_over(p);
                 hunt_tick(p, cx, cy, fz);
+                if (p.brute == kLeaper) leap_tick(p, cx, cy, fz);
             } else if (p.brute == kBreaker) {
                 hand_pack_over(p);
                 breaker_tick(p, cx, cy, fz);
@@ -5473,6 +5644,10 @@ struct Server::Impl {
             keep_stocked(p);
             if (tower_defense_mode() && p.peer && p.alive && !p.zombie)
                 remember_place(p);
+            // A leaper in flight owes the sky its own hand: the arc is
+            // steered here, before the world steps the body.
+            if (p.zombie && (p.leap_stage == 1 || p.leap_stage == 3))
+                leap_fly(p);
             p.input.holding_gun = p.tool == kToolWeapon;
             p.input.secondary_fire = p.secondary;
             const physics::StepResult r = physics::step(phys_map, p.body, p.input, dt);
