@@ -17,6 +17,19 @@ one change, in a player's words.
   put each named spawn site on the floor it asks for
 - Fixed: those settings read again, written plain or quoted, and the
   server says which map and settings it opened
+- New: the Zedcred runs the horde - kills, waves and sentries pay, the
+  prices ride the tuning file, and the purse opens at three turrets
+- New: five brutes walk the waves, each in its own skin and manner - the
+  Tank swells a wave at a time, the Healer mends its pack, the Spitter
+  lobs its acid pool, the Breaker digs its straight road to the core,
+  the Leaper walks with the pack but pounces the player it hunts
+- New: the Boomer waddles in bladders that blink ever faster and burst
+  like a grenade, and its burst wears a headshot geyser
+- New: every brute stands marked in its own colour, seen through walls
+- New: the record book keeps each map its best wave, and the menu names
+  the map and its record
+- Changed: the waves never end - they climb five by five, then ten, then
+  twenty, and the brutes ride the climb
 
 ## 0.3.7
 
