@@ -643,6 +643,22 @@ namespace spades {
 				}
 			}
 
+			// A spit is a flight off the other side as well, not one a pak
+			// has to spell: any throw of the enemy team paints its ride,
+			// and the skin alone keeps the model and the size it draws. A
+			// watcher with no team of their own stands with the defenders,
+			// that the rides keep their green for any eye that watches.
+			if (!spitFlight && throwerId >= 0 &&
+			    static_cast<size_t>(throwerId) < world->GetNumPlayerSlots()) {
+				auto th = world->GetPlayer(static_cast<unsigned int>(throwerId));
+				if (th) {
+					int localTeam = 0;
+					if (auto lp = world->GetLocalPlayer())
+						localTeam = lp->GetTeamId();
+					spitFlight = th->GetTeamId() != localTeam;
+				}
+			}
+
 			// Move the grenade slightly so that it doesn't look like sinking in the ground
 			Vector3 position = g.GetPosition();
 			position.z -= 0.03F * 3.0F;
@@ -658,6 +674,14 @@ namespace spades {
 			// born where the blob flew, swelling and thinning fast, so the
 			// line reads without a lid of haze left hanging over it.
 			if (spitFlight) {
+				static const Grenade *told = nullptr;
+				if (told != &g) {
+					told = &g;
+					NetLog("[Spit trail] thrower %d rides as %s from "
+					       "(%.1f, %.1f, %.1f)",
+					       throwerId, skinSaid, g.GetPosition().x,
+					       g.GetPosition().y, g.GetPosition().z);
+				}
 				static float nextTrailPuff = 0.0F;
 				if (GetTime() >= nextTrailPuff) {
 					nextTrailPuff = GetTime() + 0.05F;
