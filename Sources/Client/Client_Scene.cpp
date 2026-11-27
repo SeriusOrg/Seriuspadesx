@@ -42,6 +42,7 @@
 
 #include "ClientPlayer.h"
 #include "ILocalEntity.h"
+#include "SmokeSpriteEntity.h"
 
 #include "GameMap.h"
 #include "Grenade.h"
@@ -597,6 +598,9 @@ namespace spades {
 			const float usualScale = 0.03F;
 			float scale = usualScale;
 			const char *skinSaid = "the usual skin";
+			// Whether this flight is a spit drawn in its own skin, whose
+			// ride is painted in green below.
+			bool spitFlight = false;
 			// A thrower drawn in a model set of its own flies its set
 			// grenade too. The file the set lays out for the held one
 			// stands here as well (Tool/Grenade.kv6, or the own
@@ -624,6 +628,7 @@ namespace spades {
 							if (own) {
 								model = own;
 								skinSaid = "the set skin";
+								spitFlight = true;
 								// The spit flies big enough to read
 								// across the field: the set skin
 								// rides the size the console says,
@@ -647,6 +652,36 @@ namespace spades {
 			param.matrix = param.matrix * g.GetOrientation().ToRotationMatrix();
 			param.matrix = param.matrix * Matrix4::Scale(scale);
 			renderer->RenderModel(*model, param);
+
+			// The spit paints its ride in green: a puff of smoke about the
+			// size of the blob itself rides each stretch of the flight,
+			// born where the blob flew, swelling and thinning fast, so the
+			// line reads without a lid of haze left hanging over it.
+			if (spitFlight) {
+				static float nextTrailPuff = 0.0F;
+				if (GetTime() >= nextTrailPuff) {
+					nextTrailPuff = GetTime() + 0.05F;
+					auto ent = stmp::make_unique<SmokeSpriteEntity>(
+					  *this, MakeVector4(0.1F, 1.0F, 0.1F, 0.85F), 60.0F,
+					  SmokeSpriteEntity::Type::Steady);
+					Vector3 at = position;
+					at.x += (SampleRandomFloat() - 0.5F) * 0.2F;
+					at.y += (SampleRandomFloat() - 0.5F) * 0.2F;
+					ent->SetTrajectory(
+					  at,
+					  MakeVector3((SampleRandomFloat() - 0.5F) * 0.8F,
+					              (SampleRandomFloat() - 0.5F) * 0.8F,
+					              -0.4F - SampleRandomFloat() * 0.5F),
+					  0.92F, 0.0F);
+					ent->SetRotation(SampleRandomFloat() * kTwoPi);
+					ent->SetRadius(0.45F + SampleRandomFloat() * 0.15F,
+					              1.8F, 1.0F);
+					ent->SetLifeTime(0.45F + SampleRandomFloat() * 0.25F,
+					                 0.04F, 0.35F);
+					ent->SetBlockHitAction(BlockHitAction::Ignore);
+					AddLocalEntity(std::move(ent));
+				}
+			}
 
 			// While cg_spitDebug rides, a wire box the size of a block rides
 			// the grenade each frame, and the first frame of a flight says

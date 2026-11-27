@@ -642,6 +642,9 @@ struct Player {
     // stand holds - and past kSpitOffShut says the wall on the way,
     // which hands the stand back to the road until another line rides.
     float spit_off = 0.0f;
+    // The breath told before it flies: the green plume at the head was
+    // lit for the spit about to leave, and one window lights it once.
+    bool spit_warned = false;
     Vec3 walk_ref{};             // where it last stood, to catch a stuck one
     double walk_ref_at = 0.0;
     double free_slot_at = 0.0;   // dead: when its slot goes back to the wave
@@ -5166,6 +5169,33 @@ struct Server::Impl {
                     ", next spit in %.1f s",
                     p.id, wait);
         }
+        // A second before the breath blows: bright green particles off
+        // the head's origin, that a spit about to fly is said before it
+        // leaves. Only a person in the band lights it - a spitter whose
+        // window closes with nobody to spit at holds its breath and
+        // says nothing.
+        if (!p.spit_warned && world_time >= p.next_spit - 1.0 &&
+            world_time < p.next_spit) {
+            Player* tw = nullptr;
+            float least = static_cast<float>(spitter.range);
+            const float wx = p.body.pos.x, wy = p.body.pos.y;
+            for (auto& qq : players) {
+                if (!qq || qq->zombie || !qq->alive || qq->team != kPeople)
+                    continue;
+                const float dx = qq->body.pos.x - wx;
+                const float dy = qq->body.pos.y - wy;
+                const float d = std::sqrt(dx * dx + dy * dy);
+                if (d > least) continue;
+                least = d;
+                tw = qq.get();
+            }
+            if (tw && least >= static_cast<float>(spitter.min_range)) {
+                p.spit_warned = true;
+                const Vec3 at{wx, wy, p.body.pos.z + 0.5f};
+                vapour(0, proto::SmokeStyle::Column, at, 1,
+               0x00, 0xFF, 0x00, 0xFF, 10, 3);
+            }
+        }
         if (world_time < p.next_spit) return;
         Player* t = nullptr;
         float best = static_cast<float>(spitter.range);
@@ -5180,7 +5210,13 @@ struct Server::Impl {
             best = d;
             t = qq.get();
         }
-        if (!t || best < static_cast<float>(spitter.min_range)) return;
+        // The clock ran out with nobody in the band: the breath it
+        // owed keeps its plume unlit, and the warning is rearmed that
+        // the window to come lights its own.
+        if (!t || best < static_cast<float>(spitter.min_range)) {
+            p.spit_warned = false;
+            return;
+        }
         Vec3 aim = was_at(t->id, spitter.lag);
         // The arc is owed the ground the old place stood on, not the
         // head the ring reads: a burst solved onto the head pops in
@@ -5286,6 +5322,7 @@ struct Server::Impl {
                     p.id, p.spit_off);
         }
         p.next_spit = world_time + spitter.every;
+        p.spit_warned = false;
     }
     // Where a wave comes from, while it comes: the same ping the tutorial's
     // goals use, re-sent for a corner every few seconds it still streams -
