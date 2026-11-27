@@ -104,9 +104,8 @@ namespace spades {
 			} else if (params.style == SmokeParams::Spray) {
 				// The tell a breath charges: drops of the colour itself,
 				// thrown up off the origin to fall again - the splash of
-				// blood read in the shade the server sends, a drop the
-				// size a shard of a block reads, gone almost as soon as
-				// it lands.
+				// blood read in the shade the server sends, a drop half
+				// a block across reads, gone almost as soon as it lands.
 				off = RandomUnitVector();
 				off *= 0.3F;
 				vel = MakeVector3((SampleRandomFloat() - 0.5F) * 3.0F,
@@ -116,7 +115,7 @@ namespace spades {
 				  client, client.GetRenderer().RegisterWhiteImage(),
 				  params.color);
 				drop->SetTrajectory(params.origin + off, vel, 1.0F, 1.0F);
-				drop->SetRadius(0.16F + SampleRandomFloat() * 0.10F);
+				drop->SetRadius(0.32F + SampleRandomFloat() * 0.20F);
 				const float dropLife = 0.55F + SampleRandomFloat() * 0.30F;
 				drop->SetLifeTime(dropLife, 0.02F, dropLife * 0.5F);
 				drop->SetBlockHitAction(BlockHitAction::BounceWeak);
