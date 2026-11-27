@@ -50,9 +50,12 @@ namespace spades {
 			/** The audio tag of this player's reload sounds. */
 			int reloadSoundTag;
 			/** The dresses these skins were built wearing, one a gun
-			 * joined: the local player is built again the moment it
-			 * changes (see HasCurrentSkins). */
-			std::string builtWeaponDress;
+			 * (see HasCurrentSkins). */
+			std::string builtDress[4];
+			/** A dress bought for the gun in hand rides the tool
+			 * switch's swing: 1 while the old weapon goes down, 2
+			 * once it is down and the skins are built anew. */
+			int dressSwitch;
 
 			float sprintState;
 			float aimDownState;
@@ -207,15 +210,40 @@ namespace spades {
 			 * through-the-wall guard measures to it too (Client::VRGunShot). */
 			Vector3 VRGunLaserOrigin(const Vector3& handPos, const Vector3 axes[3]);
 
-			/** False once the skin scripts were reloaded, or once the local
-			 * player owns another weapon dress: the skins are then rebuilt. */
+			/** The gun the hand holds right now, the store's numbering:
+			 * 0 rifle, 1 SMG, 2 shotgun, 3 spade, or -1 for the block
+			 * and the grenade. */
+			int HeldGun() const {
+				switch (currentTool) {
+				case Player::ToolWeapon:
+					return static_cast<int>(player.GetWeaponType());
+				case Player::ToolSpade:
+					return 3;
+				default:
+					return -1;
+				}
+			}
+			/** False once the skin scripts were reloaded, or once a
+			 * dress changed: the skins are then rebuilt. A dress for
+			 * the gun in hand is waited for - Update swings it down
+			 * first, and only the foot of that swing rebuilds. */
 			bool HasCurrentSkins() const {
 				if (skinScriptGeneration !=
 				    ScriptManager::GetInstance()->GetGeneration())
 					return false;
-				if (player.IsLocalPlayer() &&
-				    builtWeaponDress != client.WeaponDressToken())
+				if (!player.IsLocalPlayer())
+					return true;
+				if (dressSwitch == 2)
 					return false;
+				if (dressSwitch == 1)
+					return true;
+				const int gun = HeldGun();
+				for (int g = 0; g < 4; ++g) {
+					if (g == gun)
+						continue;
+					if (client.WeaponDressFor(g) != builtDress[g])
+						return false;
+				}
 				return true;
 			}
 

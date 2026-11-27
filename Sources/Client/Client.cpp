@@ -1771,16 +1771,6 @@ namespace spades {
 			return "";
 		}
 
-		// What a ClientPlayer holds against the next build: every dress at
-		// once, so one card bought in rebuilds the player's skins and the
-		// weapon in the hands changes with them.
-		std::string Client::WeaponDressToken() const {
-			std::string token;
-			for (int gun = 0; gun < 4; ++gun)
-				token += WeaponDressFor(gun) + "|";
-			return token;
-		}
-
 		// A file a dressed gun loads: the dress's own when its pak ships
 		// one, the stock path when it does not, the same word the skin
 		// scripts read.

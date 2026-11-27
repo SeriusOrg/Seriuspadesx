@@ -1270,9 +1270,6 @@ namespace spades {
 			 * Gun 0 rifle, 1 SMG, 2 shotgun, 3 spade. Defined in
 			 * Client.cpp. */
 			std::string WeaponDressFor(int gun) const;
-			/** Every dress at once, joined: the token a ClientPlayer is
-			 * built again on when what it wears changes. */
-			std::string WeaponDressToken() const;
 			/** The path a dressed gun loads a file at: the dress's own file
 			 * when the pak ships one, the stock path when it does not. */
 			std::string WeaponDressPath(int gun, const char* stock) const;

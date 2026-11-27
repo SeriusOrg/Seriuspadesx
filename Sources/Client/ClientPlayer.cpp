@@ -488,16 +488,19 @@ namespace spades {
 			IAudioDevice& audio = client.GetAudioDevice();
 			skinScriptGeneration = ScriptManager::GetInstance()->GetGeneration();
 
-			// The dresses the skins below load their files through: the
-			// local player's own when it is the local player being built
-			// (the token it is rebuilt on the moment it changes), and none
-			// for anyone else, whose weapons everyone else sees.
+			// The dresses the skins below load their files through:
+			// the local player's own when it is the local player
+			// being built, and none for anyone else, whose weapons
+			// everyone else sees. The swing of a bought dress starts
+			// standing (see dressSwitch).
 			const bool local = player.IsLocalPlayer();
-			for (int gun = 0; gun < 4; ++gun)
-				SetWeaponDress(gun,
-				                 local ? client.WeaponDressFor(gun) : "");
-			builtWeaponDress =
-				local ? client.WeaponDressToken() : std::string();
+			for (int gun = 0; gun < 4; ++gun) {
+				const std::string d =
+					local ? client.WeaponDressFor(gun) : "";
+				SetWeaponDress(gun, d);
+				builtDress[gun] = d;
+			}
+			dressSwitch = 0;
 
 			sandboxedRenderer = Handle<SandboxedRenderer>::New(client.GetRenderer());
 			IRenderer& renderer = *sandboxedRenderer;
@@ -641,7 +644,19 @@ namespace spades {
 					sprintState = 0.0F;
 			}
 
-			if (currentTool == player.GetTool()) {
+			// A dress bought for the gun in hand rides the same
+			// swing a tool change does: the old weapon goes down,
+			// and at the swing's foot the skins are built again in
+			// the new dress, which then rises. (HasCurrentSkins
+			// holds the rebuild back for the gun in hand.)
+			if (isLocalPlayer && dressSwitch == 0) {
+				const int heldGun = HeldGun();
+				if (heldGun >= 0 &&
+				    client.WeaponDressFor(heldGun) != builtDress[heldGun])
+					dressSwitch = 1;
+			}
+
+			if (currentTool == player.GetTool() && dressSwitch != 1) {
 				if (isLocalPlayer) {
 					toolRaiseState += dt * 4.0F;
 					if (toolRaiseState > 1.0F)
@@ -654,8 +669,15 @@ namespace spades {
 					toolRaiseState -= dt * 4.0F;
 					if (toolRaiseState < 0.0F) {
 						toolRaiseState = 0.0F;
-						currentTool = player.GetTool();
-						client.activeNet->SendTool();
+						if (dressSwitch == 1) {
+							// The old weapon is down: the rebuilt
+							// player rises in its place, dressed.
+							dressSwitch = 2;
+						}
+						if (currentTool != player.GetTool()) {
+							currentTool = player.GetTool();
+							client.activeNet->SendTool();
+						}
 
 						// play tool change sound
 						IAudioDevice& audioDevice = client.GetAudioDevice();
