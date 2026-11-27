@@ -54,6 +54,7 @@ DEFINE_SPADES_SETTING(cg_waterImpact, "1");
 DEFINE_SPADES_SETTING(cg_corpseSoftLimit, "6");
 DEFINE_SPADES_SETTING(cg_corpseHardLimit, "16");
 
+SPADES_SETTING(cg_bodyBurstGore);
 SPADES_SETTING(cg_manualFocus);
 DEFINE_SPADES_SETTING(cg_autoFocusSpeed, "0.4");
 
@@ -498,11 +499,13 @@ namespace spades {
 				ent->SetBlockHitAction(BlockHitAction::Ignore);
 				localEntities.emplace_back(std::move(ent));
 			}
-			// The boomer's last word on top of the burst: the head
-			// burst of a headshot, its own sound over the boom, the
-			// chunks and the blood, gone up as a geyser.
-			localEntities.emplace_back(stmp::make_unique<HeadBurstEntity>(
-			  *this, pos, MakeVector3(0.0F, 0.0F, -1.0F)));
+			// The boomer's last word, kept only when its body does not
+			// burst for it: the burst of its own death, its limbs and
+			// its chunks and its blood, says the same over the boom,
+			// louder.
+			if (!(GetStoreState().received && (bool)cg_bodyBurstGore))
+				localEntities.emplace_back(stmp::make_unique<HeadBurstEntity>(
+				  *this, pos, MakeVector3(0.0F, 0.0F, -1.0F)));
 		}
 
 		namespace {

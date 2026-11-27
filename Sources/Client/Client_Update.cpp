@@ -38,6 +38,7 @@
 #include "ClientUI.h"
 #include "Corpse.h"
 #include "FallingBlock.h"
+#include "BodyBurstEntity.h"
 #include "HeadBurstEntity.h"
 #include "HurtRingView.h"
 #include "ILocalEntity.h"
@@ -54,6 +55,7 @@
 #include "NetClient.h"
 #include <Gui/TrainingHost.h>
 
+SPADES_SETTING(cg_bodyBurstGore);
 SPADES_SETTING(cg_headshotGore);
 SPADES_SETTING(cg_spitDebug);
 
@@ -1560,8 +1562,27 @@ namespace spades {
 				AddLocalEntity(stmp::make_unique<HeadBurstEntity>(*this, victim.GetEye(), dir));
 			}
 
-			// create ragdoll corpse
-			if (cg_ragdoll) {
+				// An explosion in this mode takes the whole body apart: the
+			// four limbs fly with fat chunks of the rest, and no ragdoll
+			// stands in for the torso and the head it blew away.
+			const bool bodyBurst = kt == KillTypeGrenade &&
+			                       GetStoreState().received &&
+			                       (bool)cg_bodyBurstGore;
+			if (bodyBurst) {
+				Vector3 dir;
+				if (killerId != victimId) {
+					dir = (victim.GetPosition() - killer.GetPosition()).Normalize();
+				} else {
+					// the boomer dies on its own blast: a straight-up geyser
+					dir = MakeVector3(0, 0, -1);
+				}
+				AddLocalEntity(stmp::make_unique<BodyBurstEntity>(
+				  *this, victim, victim.GetOrigin() + MakeVector3(0, 0, -0.9F),
+				  dir, &playerOutfits));
+			}
+
+		// create ragdoll corpse
+			if (cg_ragdoll && !bodyBurst) {
 				auto corp = stmp::make_unique<Corpse>(*renderer, *map, victim, isChristmasOn, &playerOutfits);
 
 				// skull burst: hide the ragdoll's head
