@@ -1752,20 +1752,22 @@ namespace spades {
 			followCameraState.enabled = IsDemoMode() || staffSpectating || (followedPlayerId != localPlayerId);
 		}
 
-		// The dress a gun wears: the first dress card this player owns for
-		// it, the pak folder the mod rides in. A gun with no card owned,
-		// or a world the store never stood in, wears the stock weapon.
+		// The dress a gun wears: the one its equip names, worn only while
+		// its card is owned. A gun with no card equipped, or a world the
+		// store never stood in, wears the stock weapon.
 		std::string Client::WeaponDressFor(int gun) const {
 			if (gun < 0 || gun > 3)
 				return "";
 			const StoreState& st = GetStoreState();
 			if (!st.received)
 				return "";
-			for (std::size_t i = 0; i < training::store::kItemCount; ++i) {
-				const training::store::Item& it = training::store::kItems[i];
+			const std::uint8_t equipped = st.equip[gun];
+			if (equipped != 255) {
+				const auto& it =
+				  training::store::kItems[static_cast<std::size_t>(equipped)];
 				if (it.effect == training::store::kEffectWeaponSkin &&
 				    static_cast<int>(it.arg) == gun && it.dress != nullptr &&
-				    st.level_of(static_cast<std::uint8_t>(i)) >= 1)
+				    st.level_of(static_cast<int>(equipped)) >= 1)
 					return it.dress;
 			}
 			return "";

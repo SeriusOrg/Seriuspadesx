@@ -556,6 +556,9 @@ struct Player {
     // stand. Levels are times bought, indexed by StoreCatalog::kItems.
     // They survive death, and are never given back.
     uint8_t store_level[store::kItemCount] = {};
+    // The dress each gun wears, an index into StoreCatalog::kItems or 255
+    // for the stock weapon: the /equip word and an empty slot at a buy.
+    uint8_t equip[4] = {255, 255, 255, 255};
     int gun_damage_bonus[3] = {};  // paid damage bands, by gun
     bool weapon_open[3] = {true, false, false};  // the rifle is always yours
     int max_hp_bonus = 0;          // Tough skin's standing
@@ -3039,6 +3042,8 @@ struct Server::Impl {
             s.weapon = static_cast<uint8_t>(o.weapon);
             s.grenades = static_cast<uint8_t>(o.grenades);
             s.blocks = static_cast<uint8_t>(o.blocks);
+            for (int g = 0; g < 4; ++g)
+                s.equip[g] = o.equip[g];
             size_t n = 0;
             for (size_t k = 0; k < store::kItemCount && n < 64; ++k)
                 if (o.store_level[k]) {
@@ -3419,9 +3424,62 @@ struct Server::Impl {
         if (!store_apply(p, index)) return;
         p.zc -= price;
         ++p.store_level[static_cast<size_t>(index)];
+        // A dress bought for an empty slot goes straight to the hand, so
+        // the weapon is worn the moment it is paid for.
+        if (item.effect == store::kEffectWeaponSkin && item.dress != nullptr &&
+            static_cast<int>(item.arg) < 4 &&
+            p.equip[item.arg] == 255) {
+            p.equip[item.arg] = static_cast<uint8_t>(index);
+            system_chat(std::string(item.label) + " equipped.", p.id);
+        }
         system_chat(std::string(item.label) + " bought for " +
                         std::to_string(price) + " Zedcreds; " +
                         std::to_string(p.zc) + " in hand.", p.id);
+        store_state_send();
+    }
+
+    // The dress the hand wears is a word too: /equip <sku> puts a bought
+    // dress on the gun it dresses, and takes it off when that gun already
+    // wears it. The purse is not touched: the card is owned, it is only
+    // worn.
+    void equip_command(Player& p, const std::string& text) {
+        if (!tower_defense_mode()) {
+            system_chat("The store stands in a tower defense world.", p.id);
+            return;
+        }
+        if (!p.alive || !p.playing()) {
+            system_chat("Spawn in before you dress.", p.id);
+            return;
+        }
+        const std::string rest =
+            trimmed(lowered(text).substr(text.size() < 7 ? text.size() : 7));
+        if (rest.empty() || rest == "help") {
+            system_chat("Say /equip <name> to wear a bought dress.", p.id);
+            return;
+        }
+        const int index = store::find_item(rest.c_str());
+        if (index < 0) {
+            system_chat("No such thing: /equip " + rest, p.id);
+            return;
+        }
+        const store::Item& item = store::kItems[static_cast<size_t>(index)];
+        if (item.effect != store::kEffectWeaponSkin || item.dress == nullptr) {
+            system_chat(std::string(item.label) +
+                            " is not a weapon dress.", p.id);
+            return;
+        }
+        if (p.store_level[static_cast<size_t>(index)] < 1) {
+            system_chat("Buy " + std::string(item.label) + " first.", p.id);
+            return;
+        }
+        const int gun = static_cast<int>(item.arg);
+        if (p.equip[gun] == static_cast<uint8_t>(index)) {
+            p.equip[gun] = 255;
+            system_chat(std::string(item.label) + " put away.", p.id);
+        } else {
+            p.equip[gun] = static_cast<uint8_t>(index);
+            system_chat(std::string(item.label) + " equipped.", p.id);
+        }
         store_state_send();
     }
 
@@ -3442,7 +3500,7 @@ struct Server::Impl {
                 }
             text += ")";
         }
-        text += ". Say /buy <name> for one.";
+        text += ". Say /buy <name> for one, /equip <name> to wear it.";
         system_chat(text, p.id);
     }
 
@@ -7756,6 +7814,9 @@ struct Server::Impl {
                 core_command(p, text);
             } else if (tower_defense_mode() && text.rfind("/buy", 0) == 0) {
                 store_command(p, text);
+            } else if (tower_defense_mode() &&
+                       text.rfind("/equip", 0) == 0) {
+                equip_command(p, text);
             } else if (tower_defense_mode() && text.rfind("/store", 0) == 0) {
                 store_command(p, text);
             } else if (tower_defense_mode() &&
@@ -7763,7 +7824,8 @@ struct Server::Impl {
                 map_advance_command(p);
             } else if (tower_defense_mode())
                 system_chat("Commands here: /clearwave, /dosh, /kill, "
-                            "/turret, /core, /money, /va, /brute, /buy", p.id);
+                            "/turret, /core, /money, /va, /brute, /buy, "
+                            "/equip", p.id);
             else system_chat(aim_mode() ? "Commands here: /restart, /kill"
                                         : "Commands here: /kill", p.id);
             return;

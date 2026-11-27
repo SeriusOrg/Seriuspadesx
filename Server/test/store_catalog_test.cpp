@@ -133,6 +133,8 @@ int main() {
             out.owned[k].index = static_cast<std::uint8_t>((k * 7) % n);
             out.owned[k].level = static_cast<std::uint8_t>(k);
         }
+        out.equip[0] = static_cast<std::uint8_t>(2 % n);
+        out.equip[3] = static_cast<std::uint8_t>(5 % n);
         proto::ByteWriter bw;
         proto::write_store(bw, out);
         proto::ByteReader br(bw.data.data(), bw.data.size());
@@ -188,6 +190,8 @@ int main() {
             out.owned[k].index = static_cast<std::uint8_t>((k * 7) % n);
             out.owned[k].level = static_cast<std::uint8_t>(k);
         }
+        out.equip[1] = static_cast<std::uint8_t>(3 % n);
+        out.equip[2] = static_cast<std::uint8_t>(7 % n);
         proto::ByteWriter bw;
         proto::write_store(bw, out);
 

@@ -499,6 +499,9 @@ namespace spades {
 					local ? client.WeaponDressFor(gun) : "";
 				SetWeaponDress(gun, d);
 				builtDress[gun] = d;
+				if (local && !d.empty())
+					SPLog("Built the local player dressed: %s",
+					      d.c_str());
 			}
 			dressSwitch = 0;
 
@@ -652,8 +655,11 @@ namespace spades {
 			if (isLocalPlayer && dressSwitch == 0) {
 				const int heldGun = HeldGun();
 				if (heldGun >= 0 &&
-				    client.WeaponDressFor(heldGun) != builtDress[heldGun])
+				    client.WeaponDressFor(heldGun) != builtDress[heldGun]) {
+					SPLog("The gun in hand changed dress: "
+					      "the swing opens");
 					dressSwitch = 1;
+				}
 			}
 
 			if (currentTool == player.GetTool() && dressSwitch != 1) {
@@ -672,6 +678,8 @@ namespace spades {
 						if (dressSwitch == 1) {
 							// The old weapon is down: the rebuilt
 							// player rises in its place, dressed.
+							SPLog("The swing is down: the skins "
+							      "rebuild dressed");
 							dressSwitch = 2;
 						}
 						if (currentTool != player.GetTool()) {

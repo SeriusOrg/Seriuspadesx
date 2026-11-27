@@ -382,6 +382,8 @@ struct StoreState {
         if (core_hp != o.core_hp || core_max_hp != o.core_max_hp) return false;
         if (weapon != o.weapon || grenades != o.grenades ||
             blocks != o.blocks) return false;
+        for (int g = 0; g < 4; ++g)
+            if (equip[g] != o.equip[g]) return false;
         if (owned_count != o.owned_count) return false;
         for (uint8_t k = 0; k < owned_count; ++k)
             if (owned[k].index != o.owned[k].index ||
@@ -397,6 +399,10 @@ struct StoreState {
     uint8_t weapon = 0;        // the current gun, 0 rifle 1 SMG 2 shotgun
     uint8_t grenades = 0;      // carried, for the consumable cards
     uint8_t blocks = 0;        // building blocks carried (capped at 50)
+    uint8_t equip[4] = {255, 255, 255, 255};  // the dress worn by each
+                                              // gun, an index into
+                                              // StoreCatalog::kItems, or
+                                              // 255 for the stock weapon
     uint8_t owned_count = 0;   // number of owned level pairs following
     Owned owned[64] = {};      // capped to 64, which exceeds the catalogue
 };
