@@ -35,8 +35,6 @@ namespace spades {
 			// of zerospades-userskins (Serius_Sim's; the plain Zombie is siecvi's).
 			// One with no folder draws the usual parts.
 			const std::string kGrunts[] = {"ZombieGrunt1", "ZombieGrunt2", "ZombieGrunt3"};
-			// The plain Zombie the base game ships, the parts pak005 holds.
-			const std::string kPlainZombie = "Zombie";
 
 			const std::string& NamedFolder(int outfit) {
 				static const std::unordered_map<int, std::string> folders = {
@@ -58,6 +56,7 @@ namespace spades {
 				  {PlayerOutfits::Caller, "ZombiePurple"},
 				  {PlayerOutfits::Breaker, "ZombieYellow"},
 				  {PlayerOutfits::Toppler, "ZombieTank"},
+				  {PlayerOutfits::Boomer, "ZombieBoomer"},
 				  {PlayerOutfits::Turret, "Turret"},       {PlayerOutfits::Projector, "Projector"},
 				  {PlayerOutfits::DishAntenna, "DishAntenna"},
 				  {PlayerOutfits::MastAntenna, "MastAntenna"},
@@ -82,12 +81,8 @@ namespace spades {
 		} // namespace
 
 		const std::string& PlayerOutfits::FolderOf(int outfit, int playerId) {
-			// The plain zombie: one of the grunts, the same one for a player
-			// id. The boomer stands in the plain Zombie the base game
-			// ships, the parts pak005 holds, until its own model rises -
-			// told apart by the dark orange flare it walks under.
-			if (outfit == Boomer)
-				return kPlainZombie;
+			// The plain zombie: one of the grunts, the same one for a
+			// player id.
 			if (outfit == Zombie)
 				return kGrunts[static_cast<unsigned>(playerId) % 3];
 			// An outfit with no art here (and the reserved numbers) is drawn as 0.
