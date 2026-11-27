@@ -33,7 +33,7 @@ int main() {
         // A card is on one of the store's shelves.
         CHECK(item(i).category < training::store::kCategoryCount);
         // An effect is one the server knows how to carry out.
-        CHECK(item(i).effect <= training::store::kEffectTurret);
+        CHECK(item(i).effect <= training::store::kEffectWeaponSkin);
         // A price is never negative.
         CHECK(item(i).price >= 0);
         // A card may be bought at least once.
