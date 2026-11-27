@@ -492,12 +492,15 @@ namespace spades {
 			// the local player's own when it is the local player
 			// being built, and none for anyone else, whose weapons
 			// everyone else sees. The swing of a bought dress starts
-			// standing (see dressSwitch).
+			// standing (see dressSwitch). The tiers ride along so
+			// the charms load by them.
 			const bool local = player.IsLocalPlayer();
-			for (int gun = 0; gun < 4; ++gun) {
+			for (int gun = 0; gun < 5; ++gun) {
 				const std::string d =
 					local ? client.WeaponDressFor(gun) : "";
 				SetWeaponDress(gun, d);
+				SetWeaponDressTier(gun,
+					local ? client.WeaponDressTierFor(gun) : 0);
 				builtDress[gun] = d;
 				if (local && !d.empty())
 					SPLog("Built the local player dressed: %s",

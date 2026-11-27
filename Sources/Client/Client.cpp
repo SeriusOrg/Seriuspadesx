@@ -1759,7 +1759,7 @@ namespace spades {
 		// otherwise. No card owned, or a world the store never stood
 		// in, wears the stock weapon.
 		std::string Client::WeaponDressFor(int gun) const {
-			if (gun < 0 || gun > 3)
+			if (gun < 0 || gun > 4)
 				return "";
 			const StoreState& st = GetStoreState();
 			if (!st.received)
@@ -1780,6 +1780,31 @@ namespace spades {
 				dress = it.dress;
 			}
 			return dress != nullptr ? std::string(dress) : std::string();
+		}
+
+		// The tier of the dress a gun wears: the best owned rung of
+		// its class's ladder, zero when the stock weapon shows. The
+		// charm rides on it - one charm a rung.
+		int Client::WeaponDressTierFor(int gun) const {
+			if (gun < 0 || gun > 4)
+				return 0;
+			const StoreState& st = GetStoreState();
+			if (!st.received)
+				return 0;
+			int best = 0;
+			for (std::size_t i = 0;
+			     i < training::store::kItemCount; ++i) {
+				const auto& it = training::store::kItems[i];
+				if (it.effect != training::store::kEffectWeaponSkin ||
+				    it.dress == nullptr ||
+				    static_cast<int>(it.arg) != gun)
+					continue;
+				if (it.tier <= best ||
+				    st.level_of(static_cast<int>(i)) < 1)
+					continue;
+				best = it.tier;
+			}
+			return best;
 		}
 
 		// A file a dressed gun loads: the dress's own when its pak ships

@@ -25,8 +25,17 @@
 namespace spades {
 	/** The Tower Defense store's weapon dresses: the pak folder a bought
 	 * skin rides in, worn by nothing until the client sets it. Gun 0 is
-	 * the rifle, 1 the SMG, 2 the shotgun, 3 the spade. */
+	 * the rifle, 1 the SMG, 2 the shotgun, 3 the spade, 4 the grenade. */
 	void SetWeaponDress(int gun, const std::string& prefix);
+
+	/** The tier of the dress each gun wears, zero when none: the charm
+	 * a gun shows is chosen by tier, so a store that sells upgrades
+	 * of one skin family hands the buyer a new charm with each rung. */
+	void SetWeaponDressTier(int gun, int tier);
+
+	/** The charm the gun's dress tier wears: the tier's own when a
+	 * dress is worn, `stock` when it is not. */
+	std::string WeaponCharmPath(int gun, const std::string& stock);
 
 	/** Whether the paks hold this file. */
 	bool PakFileExists(const std::string& path);

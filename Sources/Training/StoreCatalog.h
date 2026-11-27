@@ -47,7 +47,7 @@ enum Effect : uint8_t {
     kEffectCoreRepair,     // +25 core health
     kEffectCoreMaxHp,      // +25 max core health, permanent
     kEffectTurret,         // place/raise a sentry (arg is level)
-    kEffectWeaponSkin,     // own a weapon's dress (arg: gun, or 3 = spade)
+    kEffectWeaponSkin,     // own a weapon's dress (arg: the gun dressed)
 };
 
 struct Item {
@@ -171,24 +171,59 @@ constexpr Item kItems[] = {
     // puts on the class's own weapon. Owning the card is the whole of
     // the server's effect; the client reads the ownership and dresses
     // the weapon it holds, the arg saying what - 0 rifle, 1 SMG,
-    // 2 shotgun, 3 spade. There is no worn-or-put-away choice to make:
-    // a class wears the highest tier its owner has bought, so a class's
-    // dresses are tiers of one ladder, each asking for the one below it
-    // (prereq), and the stock gun is where every ladder starts. A new
-    // skin is a new rung: a tier-2 card with the tier-1 card as its
-    // prereq, at a price the ladder's climb should ask.
-    {"sv99", "SV99 Forest Camo", "A bolt sniper's dress for the rifle.", 60,
+    // 2 shotgun, 3 spade, 4 grenade. There is no worn-or-put-away
+    // choice to make: a class wears the highest tier its owner has
+    // bought, so a class's dresses are tiers of one ladder, each
+    // asking for the one below it (prereq), and the stock gun is where
+    // every ladder starts. The rifle and the SMG climb three paid
+    // rungs; the shotgun and the spade start theirs at tier 2, their
+    // stock shape being their tier 1; the grenade has one rung. The
+    // charm a dressed gun shows rides on the tier: bullet at 1, skull
+    // at 2, creep at 3.
+    {"rifle_lvl1", "M14 Battle Rifle", "A battle rifle's dress, tier 1.", 50,
      kGuns, kEffectWeaponSkin, 0, 1, kNone,
-     "WeaponMods/SV99_Forest_Camo/Models/Weapons/Rifle/Weapon.kv6",
-     nullptr, "WeaponMods/SV99_Forest_Camo/", 1},
-    {"minigun", "M134 Minigun", "A handheld minigun's dress for the SMG.", 80,
+     "WeaponMods/RifleLvl1/Models/Weapons/Rifle/Weapon.kv6",
+     nullptr, "WeaponMods/RifleLvl1/", 1},
+    {"rifle_lvl2", "Ballista", "A marksman's dress, tier 2.", 100,
+     kGuns, kEffectWeaponSkin, 0, 1, 25,
+     "WeaponMods/RifleLvl2/Models/Weapons/Rifle/WeaponNoMagazine.kv6",
+     nullptr, "WeaponMods/RifleLvl2/", 2},
+    {"rifle_lvl3", "SV99 Forest Camo", "A bolt sniper's dress, tier 3.", 150,
+     kGuns, kEffectWeaponSkin, 0, 1, 26,
+     "WeaponMods/RifleLvl3/Models/Weapons/Rifle/Weapon.kv6",
+     nullptr, "WeaponMods/RifleLvl3/", 3},
+    {"smg_lvl1", "AK-47", "The classic's dress, tier 1.", 50,
      kGuns, kEffectWeaponSkin, 1, 1, kNone,
-     "WeaponMods/M134_Minigun/Models/Weapons/SMG/Weapon.kv6",
-     nullptr, "WeaponMods/M134_Minigun/", 1},
-    {"sword", "Bastard Sword", "A bastard sword's dress for the spade.", 40,
+     "WeaponMods/SMGLvl1/Models/Weapons/SMG/Weapon.kv6",
+     nullptr, "WeaponMods/SMGLvl1/", 1},
+    {"smg_lvl2", "M4 Magpul", "A modern carbine's dress, tier 2.", 100,
+     kGuns, kEffectWeaponSkin, 1, 1, 28,
+     "WeaponMods/SMGLvl2/Models/Weapons/SMG/Weapon.kv6",
+     nullptr, "WeaponMods/SMGLvl2/", 2},
+    {"smg_lvl3", "M134 Minigun", "A handheld minigun's dress, tier 3.", 150,
+     kGuns, kEffectWeaponSkin, 1, 1, 29,
+     "WeaponMods/SMGLvl3/Models/Weapons/SMG/Weapon.kv6",
+     nullptr, "WeaponMods/SMGLvl3/", 3},
+    {"shotgun_lvl2", "SPAS-12", "A combat shotgun's dress, tier 2.", 60,
+     kGuns, kEffectWeaponSkin, 2, 1, kNone,
+     "WeaponMods/ShotgunLvl2/Models/Weapons/Shotgun/Weapon.kv6",
+     nullptr, "WeaponMods/ShotgunLvl2/", 2},
+    {"shotgun_lvl3", "Remington", "A pump gun's dress, tier 3.", 120,
+     kGuns, kEffectWeaponSkin, 2, 1, 31,
+     "WeaponMods/ShotgunLvl3/Models/Weapons/Shotgun/WeaponNoPump.kv6",
+     nullptr, "WeaponMods/ShotgunLvl3/", 3},
+    {"spade_lvl2", "Bastard Sword", "A bastard sword's dress, tier 2.", 30,
      kGuns, kEffectWeaponSkin, 3, 1, kNone,
-     "WeaponMods/Bastard_Sword/Models/Weapons/Spade/Spade.kv6",
-     nullptr, "WeaponMods/Bastard_Sword/", 1},
+     "WeaponMods/SpadeLvl2/Models/Weapons/Spade/Spade.kv6",
+     nullptr, "WeaponMods/SpadeLvl2/", 2},
+    {"spade_lvl3", "Lightsaber", "A saber of light's dress, tier 3.", 60,
+     kGuns, kEffectWeaponSkin, 3, 1, 33,
+     "WeaponMods/SpadeLvl3/Models/Weapons/Spade/Spade.kv6",
+     nullptr, "WeaponMods/SpadeLvl3/", 3},
+    {"rpg", "RPG-7", "A rocket launcher's dress for the grenade.", 120,
+     kGuns, kEffectWeaponSkin, 4, 1, kNone,
+     "WeaponMods/GrenadeRPG/Models/Weapons/Grenade/Grenade.kv6",
+     nullptr, "WeaponMods/GrenadeRPG/", 1},
 };
 
 constexpr size_t kItemCount = sizeof(kItems) / sizeof(kItems[0]);

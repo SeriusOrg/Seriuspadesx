@@ -225,6 +225,9 @@ namespace spades {
 			@fireLargeReverbSounds[3] = dev.RegisterSound(WeaponDressPath(1, "Sounds/Weapons/SMG/V2AmbienceLarge4.opus"));
 			@reloadSound = dev.RegisterSound(WeaponDressPath(1, "Sounds/Weapons/SMG/ReloadLocal.opus"));
 
+			// The charm a dressed gun wears: the tier's own.
+			@charmModel = renderer.RegisterModel(WeaponCharmPath(1, "Models/Weapons/Charms/Charm.kv6"));
+
 			// load images
 			@scopeImage = renderer.RegisterImage("Gfx/SMG.png");
 

@@ -33,12 +33,21 @@ namespace spades {
 	// before it builds a player's skins, so the skin scripts loading
 	// their files in that one breath read the player's own dress and
 	// nothing of anyone else's.
-	static std::string g_dress[4];
+	static std::string g_dress[5];
+
+	// The tier of each dress: the charm a gun shows rides on it.
+	static int g_dress_tier[5];
 
 	void SetWeaponDress(int gun, const std::string& prefix) {
-		if (gun < 0 || gun > 3)
+		if (gun < 0 || gun > 4)
 			return;
 		g_dress[gun] = prefix;
+	}
+
+	void SetWeaponDressTier(int gun, int tier) {
+		if (gun < 0 || gun > 4)
+			return;
+		g_dress_tier[gun] = tier;
 	}
 
 	bool PakFileExists(const std::string& path) {
@@ -55,7 +64,7 @@ namespace spades {
 	// when it does not, so a dress that misses a piece leaves the
 	// weapon whole rather than broken.
 	static std::string DressPath(int gun, const std::string& path) {
-		if (gun < 0 || gun > 3)
+		if (gun < 0 || gun > 4)
 			return path;
 		const std::string& dress = g_dress[gun];
 		if (!dress.empty()) {
@@ -72,12 +81,30 @@ namespace spades {
 	// its own sights leaves them out rather than carrying the stock
 	// ones on a body they were never carved for.
 	bool WeaponDressShips(int gun, const std::string& path) {
-		if (gun < 0 || gun > 3)
+		if (gun < 0 || gun > 4)
 			return true;
 		const std::string& dress = g_dress[gun];
 		if (dress.empty())
 			return true;
 		return PakFileExists(dress + path);
+	}
+
+	// The charm the gun's dress tier wears: the tier's own when a
+	// dress is worn, `stock` when it is not. Tier one rides with the
+	// bullet, two with the skull, three with the creep.
+	std::string WeaponCharmPath(int gun, const std::string& stock) {
+		if (gun < 0 || gun > 4)
+			return stock;
+		switch (g_dress_tier[gun]) {
+			case 1:
+				return "WeaponMods/Charms/Bullet.kv6";
+			case 2:
+				return "WeaponMods/Charms/Skull.kv6";
+			case 3:
+				return "WeaponMods/Charms/Creep.kv6";
+			default:
+				return stock;
+		}
 	}
 
 	class WeaponDressScriptObjectRegistrar : public ScriptObjectRegistrar {
@@ -98,6 +125,10 @@ namespace spades {
 					r = eng->RegisterGlobalFunction(
 						  "bool WeaponDressShips(int, const string& in)",
 						  asFUNCTION(WeaponDressShips), asCALL_CDECL);
+					manager->CheckError(r);
+					r = eng->RegisterGlobalFunction(
+						  "string WeaponCharmPath(int, const string& in)",
+						  asFUNCTION(WeaponCharmPath), asCALL_CDECL);
 					manager->CheckError(r);
 					break;
 				default:

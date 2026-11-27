@@ -1265,11 +1265,15 @@ namespace spades {
 			void ApplyStoreState(const StoreState& state) { storeState = state; }
 			const StoreState& GetStoreState() const { return storeState; }
 
-			/** The dress a gun of this player wears: the one its equip
-			 * names, the pak folder the mod rides in, or "" for the
-			 * stock weapon. Gun 0 rifle, 1 SMG, 2 shotgun, 3 spade.
-			 * Defined in Client.cpp. */
+			/** The dress a gun of this player wears: the best upgrade
+			 * owned for its class, the pak folder the mod rides in,
+			 * or "" for the stock weapon. Gun 0 rifle, 1 SMG, 2
+			 * shotgun, 3 spade, 4 grenade. Defined in Client.cpp. */
 			std::string WeaponDressFor(int gun) const;
+			/** The tier of the dress a gun wears: the best owned rung
+			 * of its class's ladder, zero for the stock weapon. The
+			 * charm a gun shows is chosen by it. */
+			int WeaponDressTierFor(int gun) const;
 			/** The path a dressed gun loads a file at: the dress's own file
 			 * when the pak ships one, the stock path when it does not. */
 			std::string WeaponDressPath(int gun, const char* stock) const;

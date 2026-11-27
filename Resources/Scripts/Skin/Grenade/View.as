@@ -55,7 +55,7 @@
 		ViewGrenadeSkin(Renderer@ r, AudioDevice@ dev) {
 			@renderer = r;
 			@audioDevice = dev;
-			@model = renderer.RegisterModel("Models/Weapons/Grenade/Grenade.kv6");
+			@model = renderer.RegisterModel(WeaponDressPath(4, "Models/Weapons/Grenade/Grenade.kv6"));
 			@sightImage = renderer.RegisterImage("Gfx/Sight.tga");
 		}
 

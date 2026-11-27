@@ -28,6 +28,13 @@ namespace spades {
 		private Model@ frontSightModel;
 		private Model@ reflexSightModel;
 
+		// Whether each sight shows at all: a dress that ships none
+		// of its own leaves the piece out rather than carrying the
+		// stock one on a body it was never carved for.
+		private bool showRearSight;
+		private bool showFrontSight;
+		private bool showReflexSight;
+
 		private AudioChunk@ fireSound;
 		private AudioChunk@ fireFarSound;
 		private AudioChunk@ fireStereoSound;
@@ -199,6 +206,9 @@ namespace spades {
 			@rearSightModel = renderer.RegisterModel(WeaponDressPath(0, "Models/Weapons/Rifle/SightRear.kv6"));
 			@frontSightModel = renderer.RegisterModel(WeaponDressPath(0, "Models/Weapons/Rifle/SightFront.kv6"));
 			@reflexSightModel = renderer.RegisterModel(WeaponDressPath(0, "Models/Weapons/Rifle/SightReflex.kv6"));
+			showRearSight = WeaponDressShips(0, "Models/Weapons/Rifle/SightRear.kv6");
+			showFrontSight = WeaponDressShips(0, "Models/Weapons/Rifle/SightFront.kv6");
+			showReflexSight = WeaponDressShips(0, "Models/Weapons/Rifle/SightReflex.kv6");
 
 			// load sounds
 			@fireSound = dev.RegisterSound(WeaponDressPath(0, "Sounds/Weapons/Rifle/FireLocal.opus"));
@@ -207,6 +217,9 @@ namespace spades {
 			@fireSmallReverbSound = dev.RegisterSound(WeaponDressPath(0, "Sounds/Weapons/Rifle/V2AmbienceSmall.opus"));
 			@fireLargeReverbSound = dev.RegisterSound(WeaponDressPath(0, "Sounds/Weapons/Rifle/V2AmbienceLarge.opus"));
 			@reloadSound = dev.RegisterSound(WeaponDressPath(0, "Sounds/Weapons/Rifle/ReloadLocal.opus"));
+
+			// The charm a dressed gun wears: the tier's own.
+			@charmModel = renderer.RegisterModel(WeaponCharmPath(0, "Models/Weapons/Charms/Charm.kv6"));
 
 			// load images
 			@scopeImage = renderer.RegisterImage("Gfx/Rifle.png");
@@ -417,23 +430,27 @@ namespace spades {
 				* CreateTranslateMatrix(GetMagazineOffset());
 			renderer.AddModel(magazineModel, param);
 
-			// draw sights
+			// draw sights: only the pieces the dress ships
 			if (cg_reflexScope.BoolValue) {
-				param.matrix = weapMatrix
-					* CreateTranslateMatrix(reflexSightAttachment)
-					* CreateScaleMatrix(reflexSightScale);
-				renderer.AddModel(reflexSightModel, param); // reflex
-			} else {
+				if (showReflexSight) {
+					param.matrix = weapMatrix
+						* CreateTranslateMatrix(reflexSightAttachment)
+						* CreateScaleMatrix(reflexSightScale);
+					renderer.AddModel(reflexSightModel, param); // reflex
+				}
+			} else if (showRearSight) {
 				param.matrix = weapMatrix
 					* CreateTranslateMatrix(rearSightAttachment)
 					* CreateScaleMatrix(rearSightScale);
 				renderer.AddModel(rearSightModel, param); // rear
 			}
 
-			param.matrix = weapMatrix
-				* CreateTranslateMatrix(frontSightAttachment)
-				* CreateScaleMatrix(frontSightScale);
-			renderer.AddModel(frontSightModel, param); // front pin (emissive)
+			if (showFrontSight) {
+				param.matrix = weapMatrix
+					* CreateTranslateMatrix(frontSightAttachment)
+					* CreateScaleMatrix(frontSightScale);
+				renderer.AddModel(frontSightModel, param); // front pin (emissive)
+			}
 
 			// draw charms
 			if (cg_weaponCharms.BoolValue) {

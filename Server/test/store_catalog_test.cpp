@@ -49,10 +49,10 @@ int main() {
                            eff == training::store::kEffectBlocks;
         CHECK(item(i).model != nullptr || item(i).icon != nullptr || drawn);
         // A dress names the pak folder its files ride in, and dresses a
-        // gun the wire knows (or the spade, at 3).
+        // gun the wire knows (or the spade, at 3, the grenade, at 4).
         if (eff == training::store::kEffectWeaponSkin) {
             CHECK(item(i).dress != nullptr && item(i).dress[0] != '\0');
-            CHECK(item(i).arg <= 3);
+            CHECK(item(i).arg <= 4);
         }
         // A dress is a rung of its class's upgrade ladder, and nothing
         // else sits on a ladder: the class wears the highest tier its

@@ -50,8 +50,8 @@ namespace spades {
 			/** The audio tag of this player's reload sounds. */
 			int reloadSoundTag;
 			/** The dresses these skins were built wearing, one a gun
-			 * (see HasCurrentSkins). */
-			std::string builtDress[4];
+			 * (see HasCurrentSkins). Gun 4 is the grenade. */
+			std::string builtDress[5];
 			/** A dress bought for the gun in hand rides the tool
 			 * switch's swing: 1 while the old weapon goes down, 2
 			 * once it is down and the skins are built anew. */
@@ -238,7 +238,7 @@ namespace spades {
 				if (dressSwitch == 1)
 					return true;
 				const int gun = HeldGun();
-				for (int g = 0; g < 4; ++g) {
+				for (int g = 0; g < 5; ++g) {
 					if (g == gun)
 						continue;
 					if (client.WeaponDressFor(g) != builtDress[g])
