@@ -28,6 +28,8 @@
 
 #include "Client.h"
 #include <Gui/TrainingHost.h>
+#include <Training/StoreCatalog.h>
+#include <ScriptBindings/WeaponDress.h>
 #include "Fonts.h"
 #include <Core/FileManager.h>
 #include <Core/IStream.h>
@@ -1748,6 +1750,48 @@ namespace spades {
 
 			followedPlayerId = nextId;
 			followCameraState.enabled = IsDemoMode() || staffSpectating || (followedPlayerId != localPlayerId);
+		}
+
+		// The dress a gun wears: the first dress card this player owns for
+		// it, the pak folder the mod rides in. A gun with no card owned,
+		// or a world the store never stood in, wears the stock weapon.
+		std::string Client::WeaponDressFor(int gun) const {
+			if (gun < 0 || gun > 3)
+				return "";
+			const StoreState& st = GetStoreState();
+			if (!st.received)
+				return "";
+			for (std::size_t i = 0; i < training::store::kItemCount; ++i) {
+				const training::store::Item& it = training::store::kItems[i];
+				if (it.effect == training::store::kEffectWeaponSkin &&
+				    static_cast<int>(it.arg) == gun && it.dress != nullptr &&
+				    st.level_of(static_cast<std::uint8_t>(i)) >= 1)
+					return it.dress;
+			}
+			return "";
+		}
+
+		// What a ClientPlayer holds against the next build: every dress at
+		// once, so one card bought in rebuilds the player's skins and the
+		// weapon in the hands changes with them.
+		std::string Client::WeaponDressToken() const {
+			std::string token;
+			for (int gun = 0; gun < 4; ++gun)
+				token += WeaponDressFor(gun) + "|";
+			return token;
+		}
+
+		// A file a dressed gun loads: the dress's own when its pak ships
+		// one, the stock path when it does not, the same word the skin
+		// scripts read.
+		std::string Client::WeaponDressPath(int gun, const char* stock) const {
+			const std::string dress = WeaponDressFor(gun);
+			if (!dress.empty()) {
+				const std::string dressed = dress + stock;
+				if (PakFileExists(dressed))
+					return dressed;
+			}
+			return stock;
 		}
 	} // namespace client
 } // namespace spades

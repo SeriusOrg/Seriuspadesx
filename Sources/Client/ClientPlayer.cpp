@@ -26,6 +26,7 @@
 #include "CTFGameMode.h"
 #include "Client.h"
 #include "ClientPlayer.h"
+#include <ScriptBindings/WeaponDress.h>
 #include "GameConstants.h"
 #include <Core/FileManager.h>
 #include <Core/VoxelModel.h>
@@ -486,6 +487,17 @@ namespace spades {
 			ScriptContextHandle ctx;
 			IAudioDevice& audio = client.GetAudioDevice();
 			skinScriptGeneration = ScriptManager::GetInstance()->GetGeneration();
+
+			// The dresses the skins below load their files through: the
+			// local player's own when it is the local player being built
+			// (the token it is rebuilt on the moment it changes), and none
+			// for anyone else, whose weapons everyone else sees.
+			const bool local = player.IsLocalPlayer();
+			for (int gun = 0; gun < 4; ++gun)
+				SetWeaponDress(gun,
+				                 local ? client.WeaponDressFor(gun) : "");
+			builtWeaponDress =
+				local ? client.WeaponDressToken() : std::string();
 
 			sandboxedRenderer = Handle<SandboxedRenderer>::New(client.GetRenderer());
 			IRenderer& renderer = *sandboxedRenderer;

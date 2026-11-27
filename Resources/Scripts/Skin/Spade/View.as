@@ -57,8 +57,8 @@
 		ViewSpadeSkin(Renderer@ r, AudioDevice@ dev) {
 			@renderer = r;
 			@audioDevice = dev;
-			@spadeModel	= renderer.RegisterModel("Models/Weapons/Spade/Spade.kv6");
-			@pickaxeModel = renderer.RegisterModel("Models/Weapons/Spade/Pickaxe.kv6");
+			@spadeModel	= renderer.RegisterModel(WeaponDressPath(3, "Models/Weapons/Spade/Spade.kv6"));
+			@pickaxeModel = renderer.RegisterModel(WeaponDressPath(3, "Models/Weapons/Spade/Pickaxe.kv6"));
 			@model = @spadeModel;
 			@sightImage = renderer.RegisterImage("Gfx/Sight.tga");
 		}

@@ -189,29 +189,29 @@ namespace spades {
 			@audioDevice = dev;
 
 			// load models
-			@gunModel = renderer.RegisterModel("Models/Weapons/SMG/WeaponNoMagazine.kv6");
-			@magazineModel = renderer.RegisterModel("Models/Weapons/SMG/Magazine.kv6");
-			@rearSightModel = renderer.RegisterModel("Models/Weapons/SMG/SightRear.kv6");
-			@frontSightModel = renderer.RegisterModel("Models/Weapons/SMG/SightFront.kv6");
-			@frontPinSightModel = renderer.RegisterModel("Models/Weapons/SMG/SightFrontPin.kv6");
-			@reflexSightModel = renderer.RegisterModel("Models/Weapons/SMG/SightReflex.kv6");
+			@gunModel = renderer.RegisterModel(WeaponDressPath(1, "Models/Weapons/SMG/WeaponNoMagazine.kv6"));
+			@magazineModel = renderer.RegisterModel(WeaponDressPath(1, "Models/Weapons/SMG/Magazine.kv6"));
+			@rearSightModel = renderer.RegisterModel(WeaponDressPath(1, "Models/Weapons/SMG/SightRear.kv6"));
+			@frontSightModel = renderer.RegisterModel(WeaponDressPath(1, "Models/Weapons/SMG/SightFront.kv6"));
+			@frontPinSightModel = renderer.RegisterModel(WeaponDressPath(1, "Models/Weapons/SMG/SightFrontPin.kv6"));
+			@reflexSightModel = renderer.RegisterModel(WeaponDressPath(1, "Models/Weapons/SMG/SightReflex.kv6"));
 
 			// load sounds
-			@fireSounds[0] = dev.RegisterSound("Sounds/Weapons/SMG/V2Local1.opus");
-			@fireSounds[1] = dev.RegisterSound("Sounds/Weapons/SMG/V2Local2.opus");
-			@fireSounds[2] = dev.RegisterSound("Sounds/Weapons/SMG/V2Local3.opus");
-			@fireSounds[3] = dev.RegisterSound("Sounds/Weapons/SMG/V2Local4.opus");
-			@fireFarSound = dev.RegisterSound("Sounds/Weapons/SMG/FireFar.opus");
-			@fireStereoSound = dev.RegisterSound("Sounds/Weapons/SMG/FireStereo.opus");
-			@fireSmallReverbSounds[0] = dev.RegisterSound("Sounds/Weapons/SMG/V2AmbienceSmall1.opus");
-			@fireSmallReverbSounds[1] = dev.RegisterSound("Sounds/Weapons/SMG/V2AmbienceSmall2.opus");
-			@fireSmallReverbSounds[2] = dev.RegisterSound("Sounds/Weapons/SMG/V2AmbienceSmall3.opus");
-			@fireSmallReverbSounds[3] = dev.RegisterSound("Sounds/Weapons/SMG/V2AmbienceSmall4.opus");
-			@fireLargeReverbSounds[0] = dev.RegisterSound("Sounds/Weapons/SMG/V2AmbienceLarge1.opus");
-			@fireLargeReverbSounds[1] = dev.RegisterSound("Sounds/Weapons/SMG/V2AmbienceLarge2.opus");
-			@fireLargeReverbSounds[2] = dev.RegisterSound("Sounds/Weapons/SMG/V2AmbienceLarge3.opus");
-			@fireLargeReverbSounds[3] = dev.RegisterSound("Sounds/Weapons/SMG/V2AmbienceLarge4.opus");
-			@reloadSound = dev.RegisterSound("Sounds/Weapons/SMG/ReloadLocal.opus");
+			@fireSounds[0] = dev.RegisterSound(WeaponDressPath(1, "Sounds/Weapons/SMG/V2Local1.opus"));
+			@fireSounds[1] = dev.RegisterSound(WeaponDressPath(1, "Sounds/Weapons/SMG/V2Local2.opus"));
+			@fireSounds[2] = dev.RegisterSound(WeaponDressPath(1, "Sounds/Weapons/SMG/V2Local3.opus"));
+			@fireSounds[3] = dev.RegisterSound(WeaponDressPath(1, "Sounds/Weapons/SMG/V2Local4.opus"));
+			@fireFarSound = dev.RegisterSound(WeaponDressPath(1, "Sounds/Weapons/SMG/FireFar.opus"));
+			@fireStereoSound = dev.RegisterSound(WeaponDressPath(1, "Sounds/Weapons/SMG/FireStereo.opus"));
+			@fireSmallReverbSounds[0] = dev.RegisterSound(WeaponDressPath(1, "Sounds/Weapons/SMG/V2AmbienceSmall1.opus"));
+			@fireSmallReverbSounds[1] = dev.RegisterSound(WeaponDressPath(1, "Sounds/Weapons/SMG/V2AmbienceSmall2.opus"));
+			@fireSmallReverbSounds[2] = dev.RegisterSound(WeaponDressPath(1, "Sounds/Weapons/SMG/V2AmbienceSmall3.opus"));
+			@fireSmallReverbSounds[3] = dev.RegisterSound(WeaponDressPath(1, "Sounds/Weapons/SMG/V2AmbienceSmall4.opus"));
+			@fireLargeReverbSounds[0] = dev.RegisterSound(WeaponDressPath(1, "Sounds/Weapons/SMG/V2AmbienceLarge1.opus"));
+			@fireLargeReverbSounds[1] = dev.RegisterSound(WeaponDressPath(1, "Sounds/Weapons/SMG/V2AmbienceLarge2.opus"));
+			@fireLargeReverbSounds[2] = dev.RegisterSound(WeaponDressPath(1, "Sounds/Weapons/SMG/V2AmbienceLarge3.opus"));
+			@fireLargeReverbSounds[3] = dev.RegisterSound(WeaponDressPath(1, "Sounds/Weapons/SMG/V2AmbienceLarge4.opus"));
+			@reloadSound = dev.RegisterSound(WeaponDressPath(1, "Sounds/Weapons/SMG/ReloadLocal.opus"));
 
 			// load images
 			@scopeImage = renderer.RegisterImage("Gfx/SMG.png");

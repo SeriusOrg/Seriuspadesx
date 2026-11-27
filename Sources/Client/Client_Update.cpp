@@ -1194,8 +1194,11 @@ namespace spades {
 			SPADES_MARK_FUNCTION();
 
 			if (!IsMuted()) {
+				const std::string missSound = p.IsLocalPlayer()
+					? WeaponDressPath(3, "Sounds/Weapons/Spade/Miss.opus")
+					: "Sounds/Weapons/Spade/Miss.opus";
 				Handle<IAudioChunk> c =
-					audioDevice->RegisterSound("Sounds/Weapons/Spade/Miss.opus");
+					audioDevice->RegisterSound(missSound.c_str());
 				if (IsPlayerInFirstPerson(p.GetId())) {
 					audioDevice->PlayLocal(c.GetPointerOrNull(),
 						MakeVector3(0.2F, -0.1F, 0.7F), AudioParam());
@@ -1260,9 +1263,13 @@ namespace spades {
 				col = map->GetColorJit(col); // randomize color
 				EmitBlockFragments(shiftedHitPos, IntVectorFromColor(col));
 
+				const char* blockStock = "Sounds/Weapons/Spade/HitBlock.opus";
+				const std::string blockSound = p.IsLocalPlayer()
+					? WeaponDressPath(3, blockStock)
+					: std::string(blockStock);
 				if (!IsMuted()) {
 					Handle<IAudioChunk> c =
-					  audioDevice->RegisterSound("Sounds/Weapons/Spade/HitBlock.opus");
+					  audioDevice->RegisterSound(blockSound.c_str());
 					audioDevice->Play(c.GetPointerOrNull(), shiftedHitPos, AudioParam());
 
 					// register sound
@@ -1702,9 +1709,14 @@ namespace spades {
 				Handle<IAudioChunk> c;
 				AudioParam param;
 
+				const char* meleeStock = "Sounds/Weapons/Spade/HitPlayer.opus";
+				const std::string meleeSound = isMeleeHit && byLocalPlayer
+					? WeaponDressPath(3, meleeStock)
+					: std::string(meleeStock);
+
 				if (!IsMuted()) {
 					if (isMeleeHit) {
-						c = audioDevice->RegisterSound("Sounds/Weapons/Spade/HitPlayer.opus");
+						c = audioDevice->RegisterSound(meleeSound.c_str());
 						audioDevice->Play(c.GetPointerOrNull(), hitPos, param);
 					} else {
 						static constexpr std::array<const char*, 3> snds = {

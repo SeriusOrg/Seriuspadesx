@@ -48,6 +48,12 @@ int main() {
                            eff == training::store::kEffectHealth ||
                            eff == training::store::kEffectBlocks;
         CHECK(item(i).model != nullptr || item(i).icon != nullptr || drawn);
+        // A dress names the pak folder its files ride in, and dresses a
+        // gun the wire knows (or the spade, at 3).
+        if (eff == training::store::kEffectWeaponSkin) {
+            CHECK(item(i).dress != nullptr && item(i).dress[0] != '\0');
+            CHECK(item(i).arg <= 3);
+        }
     }
 
     // --- the SKUs are unique, both as words and as find_item inputs --------

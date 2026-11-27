@@ -22,6 +22,7 @@
 
 #include <array>
 #include <cstdint>
+#include <string>
 
 #include "Flashlight.h"
 #include "FlashlightGlare.h"
@@ -48,6 +49,10 @@ namespace spades {
 			Player& player;
 			/** The audio tag of this player's reload sounds. */
 			int reloadSoundTag;
+			/** The dresses these skins were built wearing, one a gun
+			 * joined: the local player is built again the moment it
+			 * changes (see HasCurrentSkins). */
+			std::string builtWeaponDress;
 
 			float sprintState;
 			float aimDownState;
@@ -202,9 +207,16 @@ namespace spades {
 			 * through-the-wall guard measures to it too (Client::VRGunShot). */
 			Vector3 VRGunLaserOrigin(const Vector3& handPos, const Vector3 axes[3]);
 
-			/** False once the skin scripts were reloaded: the skins are then rebuilt. */
+			/** False once the skin scripts were reloaded, or once the local
+			 * player owns another weapon dress: the skins are then rebuilt. */
 			bool HasCurrentSkins() const {
-				return skinScriptGeneration == ScriptManager::GetInstance()->GetGeneration();
+				if (skinScriptGeneration !=
+				    ScriptManager::GetInstance()->GetGeneration())
+					return false;
+				if (player.IsLocalPlayer() &&
+				    builtWeaponDress != client.WeaponDressToken())
+					return false;
+				return true;
 			}
 
 			void Update(float dt);

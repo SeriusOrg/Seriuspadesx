@@ -62,6 +62,10 @@ struct Item {
     uint8_t prereq;         // index of a required item, or 255 for none
     const char* model;      // KV6 thumbnail path, or nullptr for a drawn icon
     const char* icon;        // Gfx/Hotbar sprite fallback, or nullptr
+    // A weapon dress rides in its own pak folder, and the client puts
+    // that folder in front of the stock paths the skin scripts load:
+    // nullptr for everything that is not a dress.
+    const char* dress;
 };
 
 constexpr uint8_t kNone = 255;
@@ -161,21 +165,22 @@ constexpr Item kItems[] = {
     // --- Weapon dresses ------------------------------------------------------
     // The mods the archive carries, a dress each: a model set the client
     // puts on a weapon the player already holds. Owning the card is the
-    // whole of the effect; the arg says what it dresses - 0 rifle,
-    // 1 SMG, 2 shotgun, 3 spade - and Store/items.txt says the words
+    // whole of the server's effect; the client reads the ownership and
+    // dresses the weapon it holds, the arg saying what - 0 rifle,
+    // 1 SMG, 2 shotgun, 3 spade - and Store/items.txt saying the words
     // and the price of every one of them.
     {"sv99", "SV99 Forest Camo", "A bolt sniper's dress for the rifle.", 60,
      kGuns, kEffectWeaponSkin, 0, 1, kNone,
      "WeaponMods/SV99_Forest_Camo/Models/Weapons/Rifle/Weapon.kv6",
-     nullptr},
+     nullptr, "WeaponMods/SV99_Forest_Camo/"},
     {"minigun", "M134 Minigun", "A handheld minigun's dress for the SMG.", 80,
      kGuns, kEffectWeaponSkin, 1, 1, kNone,
      "WeaponMods/M134_Minigun/Models/Weapons/SMG/Weapon.kv6",
-     nullptr},
+     nullptr, "WeaponMods/M134_Minigun/"},
     {"sword", "Bastard Sword", "A bastard sword's dress for the spade.", 40,
      kGuns, kEffectWeaponSkin, 3, 1, kNone,
-     "WeaponMods/Bastard_Sword/Models/Weapons/Spade/spade.kv6",
-     nullptr},
+     "WeaponMods/Bastard_Sword/Models/Weapons/Spade/Spade.kv6",
+     nullptr, "WeaponMods/Bastard_Sword/"},
 };
 
 constexpr size_t kItemCount = sizeof(kItems) / sizeof(kItems[0]);

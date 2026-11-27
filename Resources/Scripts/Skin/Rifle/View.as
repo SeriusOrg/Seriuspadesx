@@ -194,19 +194,19 @@ namespace spades {
 			@audioDevice = dev;
 
 			// load models
-			@gunModel = renderer.RegisterModel("Models/Weapons/Rifle/WeaponNoMagazine.kv6");
-			@magazineModel = renderer.RegisterModel("Models/Weapons/Rifle/Magazine.kv6");
-			@rearSightModel = renderer.RegisterModel("Models/Weapons/Rifle/SightRear.kv6");
-			@frontSightModel = renderer.RegisterModel("Models/Weapons/Rifle/SightFront.kv6");
-			@reflexSightModel = renderer.RegisterModel("Models/Weapons/Rifle/SightReflex.kv6");
+			@gunModel = renderer.RegisterModel(WeaponDressPath(0, "Models/Weapons/Rifle/WeaponNoMagazine.kv6"));
+			@magazineModel = renderer.RegisterModel(WeaponDressPath(0, "Models/Weapons/Rifle/Magazine.kv6"));
+			@rearSightModel = renderer.RegisterModel(WeaponDressPath(0, "Models/Weapons/Rifle/SightRear.kv6"));
+			@frontSightModel = renderer.RegisterModel(WeaponDressPath(0, "Models/Weapons/Rifle/SightFront.kv6"));
+			@reflexSightModel = renderer.RegisterModel(WeaponDressPath(0, "Models/Weapons/Rifle/SightReflex.kv6"));
 
 			// load sounds
-			@fireSound = dev.RegisterSound("Sounds/Weapons/Rifle/FireLocal.opus");
-			@fireFarSound = dev.RegisterSound("Sounds/Weapons/Rifle/FireFar.opus");
-			@fireStereoSound = dev.RegisterSound("Sounds/Weapons/Rifle/FireStereo.opus");
-			@fireSmallReverbSound = dev.RegisterSound("Sounds/Weapons/Rifle/V2AmbienceSmall.opus");
-			@fireLargeReverbSound = dev.RegisterSound("Sounds/Weapons/Rifle/V2AmbienceLarge.opus");
-			@reloadSound = dev.RegisterSound("Sounds/Weapons/Rifle/ReloadLocal.opus");
+			@fireSound = dev.RegisterSound(WeaponDressPath(0, "Sounds/Weapons/Rifle/FireLocal.opus"));
+			@fireFarSound = dev.RegisterSound(WeaponDressPath(0, "Sounds/Weapons/Rifle/FireFar.opus"));
+			@fireStereoSound = dev.RegisterSound(WeaponDressPath(0, "Sounds/Weapons/Rifle/FireStereo.opus"));
+			@fireSmallReverbSound = dev.RegisterSound(WeaponDressPath(0, "Sounds/Weapons/Rifle/V2AmbienceSmall.opus"));
+			@fireLargeReverbSound = dev.RegisterSound(WeaponDressPath(0, "Sounds/Weapons/Rifle/V2AmbienceLarge.opus"));
+			@reloadSound = dev.RegisterSound(WeaponDressPath(0, "Sounds/Weapons/Rifle/ReloadLocal.opus"));
 
 			// load images
 			@scopeImage = renderer.RegisterImage("Gfx/Rifle.png");
