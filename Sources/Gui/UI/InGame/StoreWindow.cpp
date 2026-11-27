@@ -87,9 +87,38 @@ namespace spades {
 			    "Gfx/BG/Core.png",
 			  };
 
-			// The shelves left to right, and their captions.
-			constexpr int kTabOrder[3] = {1, 0, 2};  // Perks, Weapons, Core
-			constexpr const char* kTabNames[3] = {"Perks", "Weapons", "Core"};
+			// The shelves the page stands, left to right, and their
+			// captions. The release stands the Weapons shelf alone;
+			// Perks and Core sit out until their cards come back.
+			constexpr int kTabOrder[] = {0};
+			constexpr const char* kTabNames[] = {"Weapons"};
+			constexpr int kTabCount = int(sizeof(kTabOrder) / sizeof(kTabOrder[0]));
+
+			// How much further in one class group stands than the one
+			// above it on the Weapons shelf, so the classes read apart.
+			constexpr float kGroupInset = 14.0F;
+
+			/** The Weapons shelf reads as the classes climb: the rifle's
+			 * tiers at the top, then the SMG's, then the shotgun's, then
+			 * the tools (the grenade's dress and the spade's). A class's
+			 * own card opens its group. */
+			int ShelfGroup(const training::store::Item& item) {
+				if (item.effect == training::store::kEffectWeapon)
+					return item.arg;
+				if (item.effect != training::store::kEffectWeaponSkin)
+					return 5;
+				if (item.arg == 4) return 3;  // the grenade's dress
+				if (item.arg == 3) return 4;  // the spade's
+				return item.arg;              // rifle, SMG, shotgun
+			}
+
+			/** A card's place in its group: the class's own card first,
+			 * then its dresses in the order they are raised in. */
+			int ShelfRank(const training::store::Item& item) {
+				if (item.effect == training::store::kEffectWeapon)
+					return 0;
+				return item.tier;
+			}
 
 			std::string Trimmed(std::string word) {
 				const size_t a = word.find_first_not_of(" \t\r\n");
@@ -536,16 +565,27 @@ namespace spades {
 
 			class StoreGridRow : public UIElement {
 				int columns;
+				// How much in from the row's left edge each card
+				// stands, one stair a class group: the classes read
+				// apart at a glance.
+				std::vector<float> insets;
 
 			public:
-				StoreGridRow(UIManager* manager, int columns)
-				    : UIElement(manager), columns(columns) {}
+				StoreGridRow(UIManager* manager, int columns,
+				               std::vector<float> insets)
+				    : UIElement(manager), columns(columns),
+				      insets(std::move(insets)) {}
 				void OnResized() override {
 					const float w = size.x / float(columns);
 					int i = 0;
-					for (const auto& card : GetChildren())
-						card->SetBounds(
-						    AABB2(float(i++) * w, 0, w - kCardGap, size.y - kCardGap));
+					for (const auto& card : GetChildren()) {
+						const float inset =
+						  i < int(insets.size()) ? insets[i] : 0.0F;
+						card->SetBounds(AABB2(float(i) * w + inset, 0,
+					                          w - kCardGap - inset,
+					                          size.y - kCardGap));
+						++i;
+					}
 				}
 			};
 
@@ -556,6 +596,7 @@ namespace spades {
 				int columns;
 				const std::map<std::string, StoreText>* texts;
 				std::vector<int> indices;
+				std::vector<float> insets;
 				std::vector<Handle<UIElement>> rows;
 				std::function<void(int, UIElement&)> select;
 
@@ -564,10 +605,11 @@ namespace spades {
 				               int item_count, int columns,
 				               const std::map<std::string, StoreText>* texts,
 				               const std::vector<int>& indices,
+				               const std::vector<float>& insets,
 				               std::function<void(int, UIElement&)> select)
 				    : manager(manager), items(items), item_count(item_count),
 				      columns(columns), texts(texts), indices(indices),
-				      select(std::move(select)) {
+				      insets(insets), select(std::move(select)) {
 					rows.resize((indices.size() + columns - 1) / columns);
 				}
 
@@ -575,10 +617,18 @@ namespace spades {
 
 				Handle<UIElement> CreateElement(int row) override {
 					if (!rows[row]) {
-						auto element = Handle<StoreGridRow>::New(manager, columns);
-						const int end = std::min(static_cast<int>(indices.size()),
+						const int begin = std::min(row * columns,
+						                              int(insets.size()));
+						const int end = std::min((row + 1) * columns,
+						                         int(insets.size()));
+						auto element =
+							Handle<StoreGridRow>::New(
+							  manager, columns,
+							  std::vector<float>(insets.begin() + begin,
+							                      insets.begin() + end));
+						const int iend = std::min(static_cast<int>(indices.size()),
 						                         (row + 1) * columns);
-						for (int i = row * columns; i < end; ++i) {
+						for (int i = row * columns; i < iend; ++i) {
 							auto card =
 								  Handle<StoreCard>::New(manager, &items[indices[i]], i, texts);
 							card->activated = [this, index = indices[i]](UIElement& s) {
@@ -631,12 +681,13 @@ namespace spades {
 				AddChild(status_label.GetPointerOrNull());
 			}
 
-			// The three tabs across the top: Perks, Weapons, Core. The shelf
-			// under them follows the one that is pressed, and the first tab
-			// stands open when the page is raised.
+			// The tabs across the top, as many as the page stands: the
+			// release one, the Weapons shelf alone. The shelf under them
+			// follows the one that is pressed, and the first tab stands
+			// open when the page is raised.
 			const float tabY = contents.min.y + 64.0F;
 			const float tabW = (w - 24.0F) / 3.0F;
-			for (int i = 0; i < 3; ++i) {
+			for (int i = 0; i < kTabCount; ++i) {
 				const int cat = kTabOrder[i];
 				auto button = Handle<gui::ui::Button>::New(manager);
 				button->caption = _Tr("Client", kTabNames[i]);
@@ -763,24 +814,56 @@ namespace spades {
 			if (core_button) core_button->toggled = cat == 2;
 
 			std::vector<int> indices;
-			for (size_t i = 0; i < training::store::kItemCount; ++i)
-				if (training::store::kItems[i].category == cat) indices.push_back(int(i));
-			// A card asked by the server's word stands under the word that
-			// asks it: the tiers of a gun in the order they are raised in,
-			// because that is the order a player reads them in.
-			std::stable_sort(indices.begin(), indices.end(),
-			                 [](int a, int b) {
-			                     if (training::store::kItems[a].price !=
-			                         training::store::kItems[b].price)
-			                         return training::store::kItems[a].price <
-			                                training::store::kItems[b].price;
-			                     return a < b;
-			                 });
+			for (size_t i = 0; i < training::store::kItemCount; ++i) {
+				const training::store::Item& it = training::store::kItems[i];
+				if (it.category != cat)
+					continue;
+				// The rifle's own card needs no shelf: the rifle is open to
+				// everyone. Its free first dress stays and reads as bought,
+				// for the range grants every class's tier 1 at spawn; the
+				// player only has to change class to wear it.
+				if (cat == training::store::kGuns &&
+				    it.effect == training::store::kEffectWeapon && it.arg == 0)
+					continue;
+				indices.push_back(int(i));
+			}
+			std::vector<float> insets(indices.size(), 0.0F);
+			if (cat == training::store::kGuns) {
+				// The shelf reads as the classes climb: the rifle's tiers at
+				// the top, then the SMG's, then the shotgun's, then the tools.
+				// A class's own card opens its group, its dresses follow in
+				// the order they are raised in, and each group stands a
+				// little further in than the one above it.
+				std::stable_sort(indices.begin(), indices.end(),
+				                 [](int a, int b) {
+				                     const auto& ia = training::store::kItems[a];
+				                     const auto& ib = training::store::kItems[b];
+				                     const int ga = ShelfGroup(ia), gb = ShelfGroup(ib);
+				                     if (ga != gb) return ga < gb;
+				                     const int ra = ShelfRank(ia), rb = ShelfRank(ib);
+				                     if (ra != rb) return ra < rb;
+				                     return a < b;
+				                 });
+				for (size_t i = 0; i < indices.size(); ++i)
+					insets[i] = kGroupInset *
+					  float(ShelfGroup(training::store::kItems[indices[i]]));
+			} else {
+				// A shelf off the release keeps its own word: the cards in
+				// the order the purse reads them in.
+				std::stable_sort(indices.begin(), indices.end(),
+				                 [](int a, int b) {
+				                     if (training::store::kItems[a].price !=
+				                         training::store::kItems[b].price)
+				                         return training::store::kItems[a].price <
+				                                training::store::kItems[b].price;
+				                     return a < b;
+				                 });
+			}
 
 			auto model = Handle<StoreGridModel>::New(
 			  &GetManager(), training::store::kItems,
 			  static_cast<int>(training::store::kItemCount), columns, &texts,
-			  indices,
+			  indices, insets,
 			  [this](int index, UIElement&) {
 			      const training::store::Item& item = training::store::kItems[index];
 			      Buy(item.sku);

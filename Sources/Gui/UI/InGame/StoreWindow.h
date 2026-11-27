@@ -48,8 +48,13 @@ namespace spades {
 		};
 
 		/**
-		 * The Tower Defense store: a landscape page with three tabs across
-		 * the top (Perks, Weapons, Core), one shelf under each. A card is a
+		 * The Tower Defense store: a landscape page. The release stands
+		 * one tab, the Weapons shelf, alone; Perks and Core sit out until
+		 * their cards come back. The shelf reads as the classes climb:
+		 * the rifle's tiers at the top, then the SMG's, then the
+		 * shotgun's, then the tools (the grenade's dress and the
+		 * spade's), each group standing a little further in than the one
+		 * above it. A card is a
 		 * row: the voxel thumbnail stands on the left in its own frame,
 		 * its name, its description and its Zedcred price beside it, the
 		 * price in a colour of its own and set apart at the bottom of the
