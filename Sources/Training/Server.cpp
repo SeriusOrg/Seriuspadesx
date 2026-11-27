@@ -1845,6 +1845,11 @@ struct Server::Impl {
         // merely priced at zero so a player who never opens the store
         // still wears one. The class's stats climb with the rung.
         if (tower_defense_mode() && p.playing() && !p.zombie) {
+            // The classes are the mode's own: every defender may stand
+            // in any of them, the change costing only the respawn into
+            // it. The unlock cards stay on the wire, their verdict
+            // refusing what is already open.
+            p.weapon_open[0] = p.weapon_open[1] = p.weapon_open[2] = true;
             bool granted = false;
             for (size_t i = 0; i < store::kItemCount; ++i) {
                 const store::Item& it = store::kItems[i];

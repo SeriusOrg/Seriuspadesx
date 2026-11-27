@@ -35,9 +35,12 @@
 #include <Gui/UI/Widgets/Label.h>
 #include <Gui/UI/Widgets/ListView.h>
 #include <Gui/UI/Widgets/VoxelModelPreview.h>
+#include <Training/Grenade.h>
 #include <Training/StoreCatalog.h>
+#include <Training/WeaponTiers.h>
 
 #include <algorithm>
+#include <cstdio>
 #include <cstdlib>
 #include <map>
 #include <string>
@@ -94,30 +97,91 @@ namespace spades {
 			constexpr const char* kTabNames[] = {"Weapons"};
 			constexpr int kTabCount = int(sizeof(kTabOrder) / sizeof(kTabOrder[0]));
 
-			// How much further in one class group stands than the one
-			// above it on the Weapons shelf, so the classes read apart.
-			constexpr float kGroupInset = 14.0F;
+			// The empty band above a class group on the Weapons shelf,
+			// one group standing apart from the one above it.
+			constexpr float kGroupGap = 16.0F;
 
-			/** The Weapons shelf reads as the classes climb: the rifle's
-			 * tiers at the top, then the SMG's, then the shotgun's, then
-			 * the tools (the grenade's dress and the spade's). A class's
-			 * own card opens its group. */
-			int ShelfGroup(const training::store::Item& item) {
-				if (item.effect == training::store::kEffectWeapon)
-					return item.arg;
-				if (item.effect != training::store::kEffectWeaponSkin)
-					return 5;
-				if (item.arg == 4) return 3;  // the grenade's dress
-				if (item.arg == 3) return 4;  // the spade's
-				return item.arg;              // rifle, SMG, shotgun
+			// One row of the Weapons shelf: which card it stands, whether
+			// the card is another class's (greyed, seen and not bought)
+			// and the empty band above it when a group starts there.
+			struct ShelfEntry {
+				int index;
+				bool greyed = false;
+				float gap = 0.0F;
+			};
+
+			/** The description wrapped to the width its lines sit in, at
+			 * most three lines of it, the last elided when the words run
+			 * past them. */
+			std::vector<std::string> WrappedText(IFont& font,
+			                                      const std::string& text,
+			                                      float width, int maxLines) {
+				std::vector<std::string> lines;
+				std::string word, line;
+				const auto take = [&]() {
+					if (line.empty()) {
+						line = word;
+					} else if (font.Measure(line + " " + word).x <= width) {
+						line += " " + word;
+					} else {
+						lines.push_back(line);
+						line = word;
+					}
+					word.clear();
+				};
+				for (const char c : text) {
+					if (c == ' ')
+						take();
+					else
+						word += c;
+				}
+				if (!word.empty())
+					take();
+				if (!line.empty())
+					lines.push_back(line);
+				if (int(lines.size()) > maxLines) {
+					lines.resize(maxLines);
+					lines[maxLines - 1] =
+					  gui::ui::ElideText(font, lines[maxLines - 1], width);
+				}
+				return lines;
 			}
 
-			/** A card's place in its group: the class's own card first,
-			 * then its dresses in the order they are raised in. */
-			int ShelfRank(const training::store::Item& item) {
-				if (item.effect == training::store::kEffectWeapon)
-					return 0;
-				return item.tier;
+			/** The numbers a dress fights with, a line each, read from
+			 * the tiers table the server pays its damage out of too. A
+			 * tool says its own two or three. */
+			std::vector<std::string> ShelfStats(
+			  const training::store::Item& item) {
+				std::vector<std::string> out;
+				char buf[32];
+				const auto add = [&](const char* label, const std::string& v) {
+					out.push_back(std::string(label) + ": " + v);
+				};
+				if (item.effect != training::store::kEffectWeaponSkin)
+					return out;
+				if (item.arg <= 2 && item.tier <= 3) {
+					const auto& s =
+					  training::tiers::kGuns[item.arg][item.tier];
+					add("Damage", std::to_string(s.damage[0]));
+					std::snprintf(buf, sizeof buf, "%.1f", 1.0F / s.delay);
+					add("Fire rate", std::string(buf) + "/s");
+					std::snprintf(buf, sizeof buf, "x%.1f", s.recoil);
+					add("Recoil", buf);
+					add("Magazine", std::to_string(s.clip));
+				} else if (item.arg == 3 && item.tier <= 3) {
+					const auto& s = training::tiers::kSpade[item.tier];
+					add("Damage", std::to_string(s.melee_damage));
+					std::snprintf(buf, sizeof buf, "x%.2f", s.range);
+					add("Reach", buf);
+					add("Block bite",
+					    std::to_string(int(50.0F * s.chip + 0.5F)));
+				} else if (item.arg == 4) {
+					// The grenade's own numbers: its blast peaks at a
+					// hundred at the centre of it, and three to carry.
+					add("Damage", "100");
+					add("Ammo", std::to_string(nade::kMaxGrenades));
+				}
+				return out;
 			}
 
 			std::string Trimmed(std::string word) {
@@ -127,8 +191,12 @@ namespace spades {
 				return word.substr(a, word.find_last_not_of(" \t\r\n") - a + 1);
 			}
 
-			/** The pause menu's palette, so a card reads as one of its buttons. */
-			Vector4 CardColour(bool hover, bool pressed, bool owned, bool poor) {
+			/** The pause menu's palette, so a card reads as one of its
+			 * buttons. A greyed card is another class's rung: neither
+			 * hovered nor pressed, for it is not this player's to buy. */
+			Vector4 CardColour(bool hover, bool pressed, bool greyed,
+			                   bool owned, bool poor) {
+				if (greyed) return MakeVector4(0.14F, 0.14F, 0.16F, 0.55F);
 				if (owned)  return MakeVector4(0.22F, 0.34F, 0.22F, 0.85F);
 				if (poor)   return MakeVector4(0.30F, 0.18F, 0.18F, 0.65F);
 				if (pressed && hover) return MakeVector4(0.7F, 0.7F, 0.7F, 0.9F);
@@ -150,6 +218,12 @@ namespace spades {
 				int price = 0;
 				int price_override = -1;  // the pak's own word, when it says one
 				std::uint16_t purse = 0;
+				// Another class's rung, seen and not bought: the card
+				// stands veiled at the foot of the shelf.
+				bool greyed = false;
+				// The numbers the rung fights with, a line each, drawn
+				// in their own block at the right edge of the card.
+				std::vector<std::string> stats;
 
 				std::unique_ptr<VoxelModelPreview> preview;
 				Handle<IImage> image;
@@ -409,9 +483,13 @@ namespace spades {
 			}
 
 			public:
-				StoreCard(UIManager* manager, const training::store::Item* item,
-				          int index, const std::map<std::string, StoreText>* texts)
+				StoreCard(UIManager* manager,
+				          const training::store::Item* item, int index,
+				          const std::map<std::string, StoreText>* texts,
+				          bool greyed_ = false)
 				    : ButtonBase(manager), item(item) {
+					greyed = greyed_;
+					stats = ShelfStats(*item);
 					caption = item->label;
 					detail = item->detail;
 					// The store's own words, when the pak says them: the name, the
@@ -480,8 +558,10 @@ namespace spades {
 						  level > 0 && item->max_level != 255 &&
 						  level >= item->max_level;
 					const bool owned = maxed;
-					const bool poor = !owned && price > 0 && purse < price;
-					const auto colour = CardColour(hover, pressed && hover, owned, poor);
+					const bool poor =
+					  !owned && !greyed && price > 0 && purse < price;
+					const auto colour =
+					  CardColour(hover, pressed && hover, greyed, owned, poor);
 					SetColorNP(r, colour);
 					r.DrawFilledRect(p.x + 1, p.y + 1, p.x + size.x - 1, p.y + size.y - 1);
 					SetColorNP(r, MakeVector4(0, 0, 0, colour.w));
@@ -520,122 +600,146 @@ namespace spades {
 						DrawStoreIcon(r, centre - MakeVector2(s, s) * 0.5F, s,
 							              IconKind::Block, 0);
 					}
+					// Another class's rung: the picture stays, veiled, for
+					// the card says what it is rather than what it looks
+					// like to buy here.
+					if (greyed) {
+						SetColorNP(r, MakeVector4(0.0F, 0.0F, 0.0F, 0.45F));
+						r.DrawFilledRect(frame.min.x, frame.min.y,
+						                frame.max.x, frame.max.y);
+					}
 
 					auto* font = GetFont();
 					if (font == nullptr)
 						return;
+					// The words sit between the picture and the numbers: the
+					// name, the description wrapped under it, and the price on
+					// a line of its own below. The numbers stand in a block of
+					// their own at the right edge, a stat a line.
+					const float statsW =
+					  stats.empty()
+					    ? 0.0F
+					    : std::min(210.0F, std::max(110.0F, size.x * 0.28F));
 					const float tx = frame.max.x + 10.0F;
-					const float tw = (p.x + size.x - kCardPad) - tx;
+					const float tw =
+					  (p.x + size.x - kCardPad - statsW - 10.0F) - tx;
 					if (tw < 24.0F)
 						return;
 					const std::string name = gui::ui::ElideText(*font, caption, tw);
-					const std::string det =
-						  gui::ui::ElideText(*font, detail, tw / 0.8F, 0.8F);
+					const std::vector<std::string> det =
+					  WrappedText(*font, detail, tw / 0.8F, 3);
 					const std::string priceLine =
-						  owned ? (maxed ? "Owned" : "Bought") : priceText;
+					  owned ? (maxed ? "Owned" : "Bought") : priceText;
 
-					// The words from the top of their block: the name, then the
-					// description under it with a breath of air between the lines.
+					// The words from the top of their block: the name, then
+					// the description under it with a breath of air between
+					// the lines.
 					const float nameH = font->Measure(name).y;
-					const float detH = font->Measure(det).y * 0.8F;
+					const float detH = font->Measure(name).y * 0.8F;
 					const float priceH = font->Measure(priceLine).y;
 					float y = p.y + kCardPad + 2.0F;
-					font->DrawShadow(name, MakeVector2(tx, y), 1.0F,
-						                 MakeVector4(1, 1, 1, 1), MakeVector4(0, 0, 0, 0.4F));
-					y += nameH + kLineGap;
-					if (y + detH + kLineGap + priceH < p.y + size.y - kCardPad) {
-						font->DrawShadow(det, MakeVector2(tx, y), 0.8F,
-							                 MakeVector4(0.8F, 0.8F, 0.8F, 1),
-							                 MakeVector4(0, 0, 0, 0.4F));
-					}
-					// The price, apart from the words in its place as in its colour:
-					// what a purse can reach, what it cannot, what it already owns.
-					const auto pm = font->Measure(priceLine);
-					const float priceY = p.y + size.y - kCardPad - priceH;
-					const Vector4 priceCol =
-					  owned ? MakeVector4(0.55F, 0.95F, 0.55F, 1)
-					        : poor ? MakeVector4(1.0F, 0.45F, 0.45F, 1)
-					               : MakeVector4(0.75F, 0.95F, 0.35F, 1);
-					font->DrawShadow(priceLine,
-						                 MakeVector2(p.x + size.x - kCardPad - pm.x, priceY),
-						                 1.0F, priceCol,
+					const Vector4 nameCol =
+					  greyed ? MakeVector4(0.55F, 0.55F, 0.57F, 1)
+					         : MakeVector4(1, 1, 1, 1);
+					const Vector4 detCol =
+					  greyed ? MakeVector4(0.42F, 0.42F, 0.44F, 1)
+					         : MakeVector4(0.8F, 0.8F, 0.8F, 1);
+					font->DrawShadow(name, MakeVector2(tx, y), 1.0F, nameCol,
 						                 MakeVector4(0, 0, 0, 0.4F));
+					y += nameH + kLineGap;
+					for (const std::string& l : det) {
+						const float bottom = p.y + size.y - kCardPad - priceH;
+						if (y + detH > bottom - kLineGap)
+							break;
+						font->DrawShadow(l, MakeVector2(tx, y), 0.8F, detCol,
+							                 MakeVector4(0, 0, 0, 0.4F));
+						y += detH + kLineGap;
+					}
+					// The price on a line of its own under the words, in its
+					// colour: the gold a purse can reach, the red it cannot. A
+					// greyed card says it in grey, for it is not this
+					// player's to buy.
+					const float priceY =
+					  std::min(y + kLineGap, p.y + size.y - kCardPad - priceH);
+					const Vector4 priceCol =
+					  greyed ? MakeVector4(0.5F, 0.5F, 0.5F, 1)
+					         : owned ? MakeVector4(0.55F, 0.95F, 0.55F, 1)
+					                 : poor ? MakeVector4(1.0F, 0.45F, 0.45F, 1)
+					                        : MakeVector4(0.75F, 0.95F,
+					                                      0.35F, 1);
+					font->DrawShadow(priceLine, MakeVector2(tx, priceY), 1.0F,
+						                 priceCol, MakeVector4(0, 0, 0, 0.4F));
+					// The numbers, a line a stat, in their block at the right
+					// edge.
+					if (!stats.empty()) {
+						const float sx = p.x + size.x - kCardPad - statsW;
+						float sy = p.y + kCardPad + 2.0F;
+						for (const std::string& l : stats) {
+							font->DrawShadow(
+							  l, MakeVector2(sx, sy), 0.8F,
+							  greyed ? MakeVector4(0.42F, 0.42F, 0.44F, 1)
+							         : MakeVector4(0.85F, 0.85F, 0.75F, 1),
+							  MakeVector4(0, 0, 0, 0.4F));
+							sy += font->Measure(l).y * 0.8F + kLineGap;
+						}
+					}
 				}
 			};
 
-			class StoreGridRow : public UIElement {
-				int columns;
-				// How much in from the row's left edge each card
-				// stands, one stair a class group: the classes read
-				// apart at a glance.
-				std::vector<float> insets;
+			// A row of the shelf: one card, stood below the empty band
+			// that opens its group when one starts there.
+			class StoreShelfRow : public UIElement {
+				float gap;
 
 			public:
-				StoreGridRow(UIManager* manager, int columns,
-				               std::vector<float> insets)
-				    : UIElement(manager), columns(columns),
-				      insets(std::move(insets)) {}
+				StoreShelfRow(UIManager* manager, float gap)
+				    : UIElement(manager), gap(gap) {}
 				void OnResized() override {
-					const float w = size.x / float(columns);
-					int i = 0;
 					for (const auto& card : GetChildren()) {
-						const float inset =
-						  i < int(insets.size()) ? insets[i] : 0.0F;
-						card->SetBounds(AABB2(float(i) * w + inset, 0,
-					                          w - kCardGap - inset,
-					                          size.y - kCardGap));
-						++i;
+						card->SetBounds(
+						  AABB2(0.0F, gap, size.x, size.y - gap));
 					}
 				}
 			};
 
-			class StoreGridModel : public gui::ui::ListViewModel {
+			class StoreShelfModel : public gui::ui::ListViewModel {
 				UIManager* manager;
 				const training::store::Item* items;
-				int item_count;
-				int columns;
 				const std::map<std::string, StoreText>* texts;
-				std::vector<int> indices;
-				std::vector<float> insets;
+				const std::vector<ShelfEntry> entries;
 				std::vector<Handle<UIElement>> rows;
 				std::function<void(int, UIElement&)> select;
 
 			public:
-				StoreGridModel(UIManager* manager, const training::store::Item* items,
-				               int item_count, int columns,
-				               const std::map<std::string, StoreText>* texts,
-				               const std::vector<int>& indices,
-				               const std::vector<float>& insets,
-				               std::function<void(int, UIElement&)> select)
-				    : manager(manager), items(items), item_count(item_count),
-				      columns(columns), texts(texts), indices(indices),
-				      insets(insets), select(std::move(select)) {
-					rows.resize((indices.size() + columns - 1) / columns);
+				StoreShelfModel(
+				  UIManager* manager, const training::store::Item* items,
+				  const std::map<std::string, StoreText>* texts,
+				  const std::vector<ShelfEntry>& entries,
+				  std::function<void(int, UIElement&)> select)
+				    : manager(manager), items(items), texts(texts),
+				      entries(entries), select(std::move(select)) {
+					rows.resize(entries.size());
 				}
 
 				int GetNumRows() override { return static_cast<int>(rows.size()); }
 
 				Handle<UIElement> CreateElement(int row) override {
 					if (!rows[row]) {
-						const int begin = std::min(row * columns,
-						                              int(insets.size()));
-						const int end = std::min((row + 1) * columns,
-						                         int(insets.size()));
+						const ShelfEntry& e = entries[row];
+						auto card = Handle<StoreCard>::New(
+						  manager, &items[e.index], row, texts, e.greyed);
+						// A greyed rung is another class's: seen, not bought,
+						// so the click falls through rather than asking the
+						// server for a buy it would refuse.
+						card->activated =
+						  [this, index = e.index,
+						   greyed = e.greyed](UIElement& s) {
+							  if (!greyed)
+								  select(index, s);
+						  };
 						auto element =
-							Handle<StoreGridRow>::New(
-							  manager, columns,
-							  std::vector<float>(insets.begin() + begin,
-							                      insets.begin() + end));
-						const int iend = std::min(static_cast<int>(indices.size()),
-						                         (row + 1) * columns);
-						for (int i = row * columns; i < iend; ++i) {
-							auto card =
-								  Handle<StoreCard>::New(manager, &items[indices[i]], i, texts);
-							card->activated = [this, index = indices[i]](UIElement& s) {
-								select(index, s);
-							};
-							element->AddChild(card.GetPointerOrNull());
-						}
+						  Handle<StoreShelfRow>::New(manager, e.gap);
+						element->AddChild(card.GetPointerOrNull());
 						rows[row] = element.Cast<UIElement>();
 					}
 					return rows[row];
@@ -705,8 +809,8 @@ namespace spades {
 				AddChild(button.GetPointerOrNull());
 			}
 			{
-				// The shelf under the tabs: rows of cards, as many rows as the
-				// page holds and as many columns as a row's cards are wide.
+			// The shelf under the tabs: rows of cards, as many rows as
+			// the page holds, one card a row.
 				auto view = Handle<gui::ui::ListViewBase>::New(manager);
 				grid = view.GetPointerOrNull();
 				const float gridY = tabY + 38.0F;
@@ -715,8 +819,6 @@ namespace spades {
 					AABB2(contents.min.x + 12.0F, gridY, w - 24.0F, gridH));
 				const int visibleRows = Clamp(int(gridH / 108.0F), 1, 4);
 				grid->rowHeight = std::floor(gridH / float(visibleRows));
-				columns =
-					Clamp(static_cast<int>(grid->GetItemWidth() / 330.0F), 1, 3);
 				AddChild(grid.GetPointerOrNull());
 			}
 			{
@@ -807,49 +909,78 @@ namespace spades {
 			}
 		}
 
+		int StoreWindow::ShelfSignature() const {
+			// The shape the shelf was built for: the class the player
+			// stands in and the rungs they own. When the word changes the
+			// list is rebuilt, so what stays on it is what is still for
+			// sale to this player in this class.
+			int sig = int(state.weapon) + 1;
+			for (size_t i = 0; i < training::store::kItemCount; ++i) {
+				if (training::store::kItems[i].effect !=
+				    training::store::kEffectWeaponSkin)
+					continue;
+				sig = sig * 5 + int(state.level_of(int(i))) + 1;
+			}
+			return sig;
+		}
+
 		void StoreWindow::ShowCategory(int cat) {
 			category = cat;
 			if (gun_button)  gun_button->toggled = cat == 0;
 			if (perk_button) perk_button->toggled = cat == 1;
 			if (core_button) core_button->toggled = cat == 2;
 
-			std::vector<int> indices;
-			for (size_t i = 0; i < training::store::kItemCount; ++i) {
-				const training::store::Item& it = training::store::kItems[i];
-				if (it.category != cat)
-					continue;
-				// The rifle's own card needs no shelf: the rifle is open to
-				// everyone. Its free first dress stays and reads as bought,
-				// for the range grants every class's tier 1 at spawn; the
-				// player only has to change class to wear it.
-				if (cat == training::store::kGuns &&
-				    it.effect == training::store::kEffectWeapon && it.arg == 0)
-					continue;
-				indices.push_back(int(i));
-			}
-			std::vector<float> insets(indices.size(), 0.0F);
+			// The shelf's rows, the classes in the order the release reads
+			// them: the player's own class first, then the tools (the
+			// grenade's dress and the spade's), then the other classes'
+			// rungs, greyed, for a player buys only the class they stand
+			// in. A rung owned and the ladder's free floor stay off it,
+			// for they only make it long.
+			std::vector<ShelfEntry> entries;
 			if (cat == training::store::kGuns) {
-				// The shelf reads as the classes climb: the rifle's tiers at
-				// the top, then the SMG's, then the shotgun's, then the tools.
-				// A class's own card opens its group, its dresses follow in
-				// the order they are raised in, and each group stands a
-				// little further in than the one above it.
-				std::stable_sort(indices.begin(), indices.end(),
-				                 [](int a, int b) {
-				                     const auto& ia = training::store::kItems[a];
-				                     const auto& ib = training::store::kItems[b];
-				                     const int ga = ShelfGroup(ia), gb = ShelfGroup(ib);
-				                     if (ga != gb) return ga < gb;
-				                     const int ra = ShelfRank(ia), rb = ShelfRank(ib);
-				                     if (ra != rb) return ra < rb;
-				                     return a < b;
-				                 });
-				for (size_t i = 0; i < indices.size(); ++i)
-					insets[i] = kGroupInset *
-					  float(ShelfGroup(training::store::kItems[indices[i]]));
+				const int my_gun =
+				  state_fresh && state.weapon <= 2 ? int(state.weapon) : -1;
+				const auto rungs = [&](int gun, bool greyed) {
+					const size_t before = entries.size();
+					for (size_t i = 0; i < training::store::kItemCount; ++i) {
+						const training::store::Item& it =
+						  training::store::kItems[i];
+						if (it.effect != training::store::kEffectWeaponSkin)
+							continue;
+						if (int(it.arg) != gun)
+							continue;
+						// The free floor is worn by everyone from the first
+						// spawn, and an owned rung is a rung no card needs to
+						// say again.
+						if (it.tier == 1 && it.price == 0)
+							continue;
+						if (state.level_of(int(i)) >= 1)
+							continue;
+						ShelfEntry e;
+						e.index = int(i);
+						e.greyed = greyed;
+						entries.push_back(e);
+					}
+					// A group opens with a band of air above it, the first
+					// row of the shelf excepted.
+					if (entries.size() > before && before > 0)
+						entries[before].gap = kGroupGap;
+				};
+				if (my_gun >= 0)
+					rungs(my_gun, false);
+				rungs(4, false);  // the grenade's dress
+				rungs(3, false);  // the spade's
+				for (int g = 0; g <= 2; ++g) {
+					if (g != my_gun)
+						rungs(g, true);
+				}
 			} else {
-				// A shelf off the release keeps its own word: the cards in
+				// A shelf off the release keeps its own word: its cards in
 				// the order the purse reads them in.
+				std::vector<int> indices;
+				for (size_t i = 0; i < training::store::kItemCount; ++i)
+					if (training::store::kItems[i].category == cat)
+						indices.push_back(int(i));
 				std::stable_sort(indices.begin(), indices.end(),
 				                 [](int a, int b) {
 				                     if (training::store::kItems[a].price !=
@@ -858,18 +989,20 @@ namespace spades {
 				                                training::store::kItems[b].price;
 				                     return a < b;
 				                 });
+				for (int i : indices)
+					entries.push_back(ShelfEntry{i, false, 0.0F});
 			}
 
-			auto model = Handle<StoreGridModel>::New(
-			  &GetManager(), training::store::kItems,
-			  static_cast<int>(training::store::kItemCount), columns, &texts,
-			  indices, insets,
+			auto model = Handle<StoreShelfModel>::New(
+			  &GetManager(), training::store::kItems, &texts, entries,
 			  [this](int index, UIElement&) {
-			      const training::store::Item& item = training::store::kItems[index];
+			      const training::store::Item& item =
+			        training::store::kItems[index];
 			      Buy(item.sku);
 			  });
 			grid->SetModel(model.GetPointerOrNull());
 			grid->ScrollToRow(0);
+			model_sig = ShelfSignature();
 			UpdateStatus(false);
 		}
 
@@ -942,6 +1075,11 @@ namespace spades {
 				state = ui->client->GetStoreState();
 				state_fresh = state.received;
 			}
+			// The shelf's shape follows the store's word: a rung bought or a
+			// class changed is a list rebuilt, so what stays on it is what
+			// is still worth a look.
+			if (state_fresh && grid && ShelfSignature() != model_sig)
+				ShowCategory(category);
 			if (state_fresh && grid) {
 				for (auto& row : grid->GetChildren()) {
 					for (auto& card : row->GetChildren()) {

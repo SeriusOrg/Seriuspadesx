@@ -51,15 +51,17 @@ namespace spades {
 		 * The Tower Defense store: a landscape page. The release stands
 		 * one tab, the Weapons shelf, alone; Perks and Core sit out until
 		 * their cards come back. The shelf reads as the classes climb:
-		 * the rifle's tiers at the top, then the SMG's, then the
-		 * shotgun's, then the tools (the grenade's dress and the
-		 * spade's), each group standing a little further in than the one
-		 * above it. A card is a
-		 * row: the voxel thumbnail stands on the left in its own frame,
-		 * its name, its description and its Zedcred price beside it, the
-		 * price in a colour of its own and set apart at the bottom of the
-		 * words. A card without a model of its own wears the breadcrumb as
-		 * a placeholder rather than a drawn icon.
+		 * the player's own class first, then the tools (the grenade's
+		 * dress and the spade's), then the other classes' rungs greyed
+		 * and at the foot of the shelf, for a player buys only the class
+		 * they stand in; a rung owned and the ladder's free floor stay
+		 * off it, and the shelf is rebuilt when the store's word of it
+		 * changes. A card is a row: the voxel thumbnail stands on the
+		 * left in its own frame, its name and its description wrapped
+		 * beside it, the price on a line of its own under the words, and
+		 * the rung's stats in a block at the right edge. A card without a
+		 * model of its own wears the breadcrumb as a placeholder rather
+		 * than a drawn icon.
 		 *
 		 * Each tab can carry its own art, an image of the Tower Defense
 		 * pak's Gfx/BG (Weapons.png, Perks.png, Core.png) drawn over the
@@ -88,12 +90,13 @@ namespace spades {
 			bool tab_bg_read[3] = {false, false, false};
 			Handle<gui::ui::ListViewBase> grid;
 			Handle<gui::ui::Label> status_label;
-			int columns = 1;
 			int category = 0;
+			int model_sig = -1;
 			std::string message;
 			float messageAt = -1000.0F;
 
 			void LoadTexts();
+			int ShelfSignature() const;
 			void ShowCategory(int cat);
 			void Buy(const std::string& sku);
 			void UpdateStatus(bool idle_prompt);
