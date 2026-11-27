@@ -674,15 +674,13 @@ namespace spades {
 			// born where the blob flew, swelling and thinning fast, so the
 			// line reads without a lid of haze left hanging over it.
 			if (spitFlight) {
-				static const Grenade *told = nullptr;
-				if (told != &g) {
-					told = &g;
+				if (spitTrailTold != &g) {
+					spitTrailTold = &g;
 					NetLog("[Spit trail] thrower %d rides as %s from "
 					       "(%.1f, %.1f, %.1f)",
 					       throwerId, skinSaid, g.GetPosition().x,
 					       g.GetPosition().y, g.GetPosition().z);
 				}
-				static float nextTrailPuff = 0.0F;
 				if (GetTime() >= nextTrailPuff) {
 					nextTrailPuff = GetTime() + 0.05F;
 					auto ent = stmp::make_unique<SmokeSpriteEntity>(

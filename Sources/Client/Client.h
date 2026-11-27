@@ -171,6 +171,15 @@ namespace spades {
 			bool readyToClose;
 			float worldSubFrame;
 
+			// The spit trail's own clock: when its next green puff may
+			// ride a flight, and the flight its NetLog last spoke of.
+			// Both belong to the game, not the process - a client born
+			// again restarts its clock at zero, and a throttle left
+			// over from the game before would hold its peace through
+			// the minutes the old one ran.
+			float nextTrailPuff = 0.0F;
+			const Grenade *spitTrailTold = nullptr;
+
 			int frameToRendererInit;
 			float timeSinceInit;
 
