@@ -159,7 +159,7 @@ namespace spades {
 				const int sprays = SampleRandomInt(28, 44);
 				for (int i = 0; i < sprays; i++) {
 					auto ent =
-					  stmp::make_unique<ParticleSpriteEntity>(*client, img, blood);
+					  stmp::make_unique<ParticleSpriteEntity>(client, img, blood);
 					ent->SetTrajectory(origin,
 					                   (RandomVector() +
 					                    MakeVector3(0, 0, -0.6F)) *
@@ -167,7 +167,7 @@ namespace spades {
 					ent->SetRadius(0.5F);
 					ent->SetLifeTime(3.0F, 0.0F, 1.0F);
 					ent->SetBlockHitAction(BlockHitAction::BounceWeak);
-					client->AddLocalEntity(std::move(ent));
+					client.AddLocalEntity(std::move(ent));
 				}
 			}
 
