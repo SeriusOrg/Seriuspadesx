@@ -872,6 +872,17 @@ struct Server::Impl {
         double at;
     };
     std::vector<AcidMelt> melts;
+    // The paint the floor of the world wears, booked to come off: a
+    // bedrock cell is painted like any other, but it is never taken,
+    // for the floor is not rebuilt - the paint is owed its own colour
+    // back when the clock runs out. A fresh world tears the whole host
+    // down with the melts, so neither queue outlives its map.
+    struct AcidRestore {
+        int x, y, z;
+        double at;
+        uint32_t colour;
+    };
+    std::vector<AcidRestore> restores;
     // The clock of the pool's burn: the beat the acid next works on
     // whoever stands their ground inside the paint.
     double acid_beat_at = 0.0;
@@ -2782,6 +2793,17 @@ struct Server::Impl {
         bw.write_i32(y);
         bw.write_i32(z);
         broadcast(bw, true);
+    }
+    // The paint come off: the colour said first and the block aired
+    // over its own place after, the same two words the paint was laid
+    // with, so a client sees the bedrock wear its own face again.
+    void acid_block_repainted(int x, int y, int z, uint32_t colour) {
+        ByteWriter c;
+        c.write_u8(static_cast<uint8_t>(PacketId::SetColor));
+        c.write_u8(kAcidBlockId);
+        write_color(c, colour);
+        broadcast(c, true);
+        acid_block_painted(x, y, z);
     }
 
     // The block under the builder's eye, along the line they look down, out
@@ -6566,7 +6588,9 @@ struct Server::Impl {
 
     // The landing of the acid: a pool painted green where it touches
     // ground, every cell of the pool booked to melt when its clock
-    // runs out, and a hurt brought only where the spit met a body:
+    // runs out - the bedrock painted too, but booked its own colour
+    // back, for the floor of the world is never taken - and a hurt
+    // brought only where the spit met a body:
     // nothing of the grenade blast rides out from the landing any
     // more, the people hurt are the people the pool holds under their
     // feet or their stand, and a step out of the paint walks the
@@ -6603,11 +6627,9 @@ struct Server::Impl {
                         !map.solid(cx, cy, cz))
                         continue;
                     // The floor of the world holds against the acid
-                    // as it holds against the people: the bedrock and
-                    // the water under it are never rebuilt, so the
-                    // pool paints and melts no deeper than the lowest
-                    // layer an edit may touch.
-                    if (cz >= 62) continue;
+                    // as it holds against the people: the bedrock is
+                    // never rebuilt, so the pool paints it but takes
+                    // nothing of it, the paint owed back at the melt.
                     if (core_column_cell(cx, cy, cz)) continue;
                     pool.push_back(Cell{cx, cy, cz});
                 }
@@ -6654,17 +6676,37 @@ struct Server::Impl {
                static_cast<uint16_t>(spitter.melt * 10.0), 8);
         int laid_cells = 0;
         for (const Cell& c : pool) {
+            const uint32_t was = map.color(c.x, c.y, c.z);
             map.set(c.x, c.y, c.z, kAcidColour);
             acid_block_painted(c.x, c.y, c.z);
             // A cell a crumble apart once the clock runs out: the
             // pool falls away one at a time and the ground says so,
             // a crumble a cell, the paint holding its peril whole.
-            melts.push_back(
-                AcidMelt{c.x, c.y, c.z,
-                         world_time + spitter.melt +
-                             static_cast<double>(laid_cells) *
-                             static_cast<double>(kAcidCrumble)});
+            const double at =
+                world_time + spitter.melt +
+                static_cast<double>(laid_cells) *
+                    static_cast<double>(kAcidCrumble);
             ++laid_cells;
+            // The bedrock is painted but never taken: its cell is
+            // booked to come back in its own colour at the melt. A
+            // second pool over a cell still painted keeps the first
+            // booking - the true colour is already said - and rides
+            // its clock on to the later melt.
+            if (c.z >= 62) {
+                bool booked = false;
+                for (AcidRestore& r : restores) {
+                    if (r.x != c.x || r.y != c.y || r.z != c.z)
+                        continue;
+                    r.at = std::max(r.at, at);
+                    booked = true;
+                    break;
+                }
+                if (!booked && was != kAcidColour)
+                    restores.push_back(
+                        AcidRestore{c.x, c.y, c.z, at, was});
+                continue;
+            }
+            melts.push_back(AcidMelt{c.x, c.y, c.z, at});
         }
     }
     // The melts come due, a cell a pass of the tick: the block leaves
@@ -6698,6 +6740,26 @@ struct Server::Impl {
             map.destroy_point(m.x, m.y, m.z, &removed);
             touched(removed, false);
         }
+        // The paint comes off the bedrock the same cadence the melt
+        // works at: the floor is given its own colour back, not taken,
+        // and the repaint is said the way the paint was.
+        for (size_t i = 0; i < restores.size();) {
+            if (world_time < restores[i].at) {
+                ++i;
+                continue;
+            }
+            const AcidRestore r = restores[i];
+            restores.erase(restores.begin() + static_cast<long>(i));
+            if (!VoxelMap::valid(r.x, r.y, r.z) ||
+                !map.solid(r.x, r.y, r.z))
+                continue;
+            // A hand may have aired its own colour over the paint:
+            // the floor keeps whatever it wears now but the acid's.
+            if (map.color(r.x, r.y, r.z) != kAcidColour)
+                continue;
+            map.set(r.x, r.y, r.z, r.colour);
+            acid_block_repainted(r.x, r.y, r.z, r.colour);
+        }
     }
 
     // The pool, a peril the whole paint holds: the acid works on
@@ -6727,6 +6789,14 @@ struct Server::Impl {
                 in_pool = true;
                 break;
             }
+            if (!in_pool)
+                for (const AcidRestore& r : restores) {
+                    if (world_time >= r.at) continue;
+                    if (r.x != fx || r.y != fy) continue;
+                    if (r.z != fz && r.z != fz + 1) continue;
+                    in_pool = true;
+                    break;
+                }
             if (in_pool)
                 set_hp(*qq, qq->hp - hurt, nullptr, kGrenadeKill,
                        &qq->body.pos);
