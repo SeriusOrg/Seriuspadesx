@@ -6639,7 +6639,9 @@ struct Server::Impl {
         // people the pool holds stood in the spit, a share of a
         // grenade hurt once, charged to the hand that spat; the pool
         // then burns whoever wades in the paint a beat at a time,
-        // its own tick taking over.
+        // its own tick taking over. Both wear the fall on the wire,
+        // the no one's hand death: a body the acid takes leaves no
+        // burst behind it, only the ragdoll's own fall.
         const int hurt = static_cast<int>(
             100.0f * static_cast<float>(spitter.to_people));
         if (hurt > 0)
@@ -6661,7 +6663,7 @@ struct Server::Impl {
                     break;
                 }
                 if (in_pool)
-                    set_hp(*pp, pp->hp - hurt, owner, kGrenadeKill,
+                    set_hp(*pp, pp->hp - hurt, owner, kFallKill,
                            &pos);
             }
         // And its breath over the paint: a bed of green kept at the
@@ -6798,7 +6800,7 @@ struct Server::Impl {
                     break;
                 }
             if (in_pool)
-                set_hp(*qq, qq->hp - hurt, nullptr, kGrenadeKill,
+                set_hp(*qq, qq->hp - hurt, nullptr, kFallKill,
                        &qq->body.pos);
         }
     }
