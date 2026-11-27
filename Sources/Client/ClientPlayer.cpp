@@ -1689,6 +1689,19 @@ namespace spades {
 						pulse = 1.0F + 0.4F * climb;
 						param.customColor = ConvertColorRGB(mark->color);
 					}
+					// DIAGNOSTIC v178cu: one line each time a mark on this
+					// head is fresh, that the log says whether the block
+					// runs at all, what the mark holds, and the pulse it
+					// draws with.
+					if (mark && mark->age < 0.05F) {
+						client.NetLog("HEAD id %d pulseHead %d pulse %.2f "
+						              "age %.3f color (%d, %d, %d)",
+						              p.GetId(),
+						              mark->pulseHead ? 1 : 0,
+						              pulse, mark->age,
+						              mark->color.x, mark->color.y,
+						              mark->color.z);
+					}
 					param.matrix = head * scaler * Matrix4::Scale(pulse);
 					renderer.RenderModel(*model, param);
 					param.customColor = MakeVector3(0, 0, 0);

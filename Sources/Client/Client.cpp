@@ -1484,6 +1484,16 @@ namespace spades {
 				   (unsigned int)flags, color.x, color.y, color.z, reason.c_str());
 
 			teamplay->SetMark(playerId, duration, surfaces, flags, color, std::move(reason));
+
+			// DIAGNOSTIC v178cu: what the map holds once the packet is
+			// in it. The flags the head pulse rides, said again from
+			// the mark the map holds, that the log tells the two apart.
+			if (flags & Teamplay::MarkFlagPulseHead) {
+				auto mark = teamplay->GetMark(playerId);
+				if (mark)
+					NetLog("[Mark held] id %d pulseHead %d", playerId,
+					       mark->pulseHead ? 1 : 0);
+			}
 		}
 
 		void Client::TeamplayPlayerSpawned(int playerId) {
