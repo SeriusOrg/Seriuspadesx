@@ -220,7 +220,13 @@ if(ZEROSPADES_RESOURCES)
 			COMMAND
 				${CMAKE_COMMAND} -E copy_if_different
 					${CMAKE_SOURCE_DIR}/towerdefense.toml
-					${CMAKE_BINARY_DIR}/bin/$<CONFIGURATION>/towerdefense.toml)
+					${CMAKE_BINARY_DIR}/bin/$<CONFIGURATION>/towerdefense.toml
+			# the store's words and prices ride the same road: the
+			# server reads them beside the exe, the client in the pak
+			COMMAND
+				${CMAKE_COMMAND} -E copy_if_different
+					${CMAKE_CURRENT_SOURCE_DIR}/TowerDefense/Store/items.txt
+					${CMAKE_BINARY_DIR}/bin/$<CONFIGURATION>/store_items.txt)
 	endif (WIN32 AND MSVC)
 endif()
 

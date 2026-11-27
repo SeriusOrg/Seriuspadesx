@@ -47,6 +47,7 @@ enum Effect : uint8_t {
     kEffectCoreRepair,     // +25 core health
     kEffectCoreMaxHp,      // +25 max core health, permanent
     kEffectTurret,         // place/raise a sentry (arg is level)
+    kEffectWeaponSkin,     // own a weapon's dress (arg: gun, or 3 = spade)
 };
 
 struct Item {
@@ -70,7 +71,11 @@ constexpr uint8_t kNone = 255;
 // of these; a missing file falls back to the card's Hotbar sprite, and a
 // missing sprite to a drawn placeholder.
 constexpr Item kItems[] = {
-    // --- Guns ---------------------------------------------------------------
+    // --- Guns and gun cards -------------------------------------------------
+    // The Weapons shelf holds only the weapons themselves and their
+    // dresses; the rounds, the ammo and the sentries below keep their
+    // wire places on the Perks and Core shelves, for an item's index is
+    // its name on the wire and never moves.
     {"rifle", "Rifle", "Standard issue. Always yours.", 0,
      kGuns, kEffectWeapon, 0, 1, kNone,
      "Models/Weapons/Rifle/Weapon.kv6", "Gfx/Hotbar/Rifle.png"},
@@ -81,28 +86,28 @@ constexpr Item kItems[] = {
      kGuns, kEffectWeapon, 2, 1, kNone,
      "Models/Weapons/Shotgun/Weapon.kv6", "Gfx/Hotbar/Shotgun.png"},
     {"rifle_dmg1", "Rifle: heavy round", "+1 damage band, rifle.", 25,
-     kGuns, kEffectGunDamage, 0, 1, 0,
+     kPerks, kEffectGunDamage, 0, 1, 0,
      "Models/Weapons/Rifle/Weapon.kv6", "Gfx/Hotbar/Rifle.png"},
     {"rifle_dmg2", "Rifle: heaviest", "Another damage band.", 40,
-     kGuns, kEffectGunDamage, 0, 1, 3,
+     kPerks, kEffectGunDamage, 0, 1, 3,
      "Models/Weapons/Rifle/Weapon.kv6", "Gfx/Hotbar/Rifle.png"},
     {"smg_dmg1", "SMG: heavy round", "+1 damage band, SMG.", 30,
-     kGuns, kEffectGunDamage, 1, 1, 1,
+     kPerks, kEffectGunDamage, 1, 1, 1,
      "Models/Weapons/SMG/Weapon.kv6", "Gfx/Hotbar/SMG.png"},
     {"smg_dmg2", "SMG: heaviest", "Another damage band.", 45,
-     kGuns, kEffectGunDamage, 1, 1, 5,
+     kPerks, kEffectGunDamage, 1, 1, 5,
      "Models/Weapons/SMG/Weapon.kv6", "Gfx/Hotbar/SMG.png"},
     {"shotgun_dmg1", "Shotgun: buck shot", "+1 damage band, shotgun.", 35,
-     kGuns, kEffectGunDamage, 2, 1, 2,
+     kPerks, kEffectGunDamage, 2, 1, 2,
      "Models/Weapons/Shotgun/Weapon.kv6", "Gfx/Hotbar/Shotgun.png"},
     {"shotgun_dmg2", "Shotgun: slug", "Another damage band.", 50,
-     kGuns, kEffectGunDamage, 2, 1, 7,
+     kPerks, kEffectGunDamage, 2, 1, 7,
      "Models/Weapons/Shotgun/Weapon.kv6", "Gfx/Hotbar/Shotgun.png"},
     {"ammo", "Ammo refill", "Reserve back to full.", 5,
-     kGuns, kEffectAmmo, 0, 255, kNone,
+     kPerks, kEffectAmmo, 0, 255, kNone,
      nullptr, "Gfx/Hotbar/Grenade.png"},
     {"grenades", "Grenade", "One more to throw.", 6,
-     kGuns, kEffectGrenades, 1, 255, kNone,
+     kPerks, kEffectGrenades, 1, 255, kNone,
      "Models/Weapons/Grenade/Grenade.kv6", "Gfx/Hotbar/Grenade.png"},
 
     // --- Perks --------------------------------------------------------------
@@ -142,16 +147,35 @@ constexpr Item kItems[] = {
      kCore, kEffectCoreMaxHp, 25, 1, 20,
      nullptr, nullptr},
 
-    // --- Sentries -----------------------------------------------------------
+    // --- Sentries (the Core shelf) -------------------------------------------
     {"turret1", "Sentry: SMG", "A level 1 pillar.", 5,
-     kGuns, kEffectTurret, 1, 255, kNone,
+     kCore, kEffectTurret, 1, 255, kNone,
      "Models/Turrets/TurretHeadMG1.kv6", nullptr},
     {"turret2", "Sentry: MG", "Raise to level 2.", 10,
-     kGuns, kEffectTurret, 2, 255, 22,
+     kCore, kEffectTurret, 2, 255, 22,
      "Models/Turrets/TurretHeadMG2.kv6", nullptr},
     {"turret3", "Sentry: Minigun", "Raise to level 3.", 30,
-     kGuns, kEffectTurret, 3, 255, 23,
+     kCore, kEffectTurret, 3, 255, 23,
      "Models/Turrets/TurretHeadMG3.kv6", nullptr},
+
+    // --- Weapon dresses ------------------------------------------------------
+    // The mods the archive carries, a dress each: a model set the client
+    // puts on a weapon the player already holds. Owning the card is the
+    // whole of the effect; the arg says what it dresses - 0 rifle,
+    // 1 SMG, 2 shotgun, 3 spade - and Store/items.txt says the words
+    // and the price of every one of them.
+    {"sv99", "SV99 Forest Camo", "A bolt sniper's dress for the rifle.", 60,
+     kGuns, kEffectWeaponSkin, 0, 1, kNone,
+     "WeaponMods/SV99_Forest_Camo/Models/Weapons/Rifle/Weapon.kv6",
+     nullptr},
+    {"minigun", "M134 Minigun", "A handheld minigun's dress for the SMG.", 80,
+     kGuns, kEffectWeaponSkin, 1, 1, kNone,
+     "WeaponMods/M134_Minigun/Models/Weapons/SMG/Weapon.kv6",
+     nullptr},
+    {"sword", "Bastard Sword", "A bastard sword's dress for the spade.", 40,
+     kGuns, kEffectWeaponSkin, 3, 1, kNone,
+     "WeaponMods/Bastard_Sword/Models/Weapons/Spade/spade.kv6",
+     nullptr},
 };
 
 constexpr size_t kItemCount = sizeof(kItems) / sizeof(kItems[0]);
@@ -164,7 +188,7 @@ inline int find_item(const char* sku) {
 
 constexpr const char* category_name(uint8_t cat) {
     switch (cat) {
-        case kGuns:  return "Guns";
+        case kGuns:  return "Weapons";
         case kPerks: return "Perks";
         case kCore:  return "Core";
         default:     return "?";

@@ -2751,6 +2751,75 @@ struct Server::Impl {
             spitter.pool);
     }
 
+    // The store's own words for its prices, said a card a line in
+    // store_items.txt beside the server: "sku | name | description |
+    // price", the same file the pak ships to the client, so what the
+    // shelf says and what the purse pays are the one words the host
+    // wrote. The TOML's own word for a card still wins when it wrote
+    // one, and a card the file does not name keeps its default.
+    void load_store_items_txt() {
+        std::ifstream in("store_items.txt", std::ios::binary);
+        if (!in) {
+            log("no store_items.txt beside the server: the cards stand "
+                "on their own prices");
+            return;
+        }
+        const std::string text((std::istreambuf_iterator<char>(in)),
+                               std::istreambuf_iterator<char>());
+        auto trimmed = [](const std::string& s) {
+            size_t a = 0, b = s.size();
+            while (a < b && std::isspace(static_cast<unsigned char>(s[a])))
+                ++a;
+            while (b > a &&
+                   std::isspace(static_cast<unsigned char>(s[b - 1])))
+                --b;
+            return s.substr(a, b - a);
+        };
+        int said = 0;
+        size_t at = 0;
+        while (at <= text.size()) {
+            const size_t end = text.find('\n', at);
+            const std::string line =
+                text.substr(at, end == std::string::npos
+                                   ? std::string::npos
+                                   : end - at);
+            at = end == std::string::npos ? text.size() + 1 : end + 1;
+            const std::string cut = trimmed(line);
+            if (cut.empty() || cut[0] == '#') continue;
+            // The fourth field is the price; a line without one says
+            // no price and only dresses the card's words.
+            std::vector<std::string> fields;
+            size_t f = 0;
+            while (fields.size() < 4) {
+                const size_t bar = cut.find('|', f);
+                if (bar == std::string::npos || fields.size() == 3) {
+                    fields.push_back(trimmed(cut.substr(f)));
+                    break;
+                }
+                fields.push_back(trimmed(cut.substr(f, bar - f)));
+                f = bar + 1;
+            }
+            if (fields.size() < 4) continue;
+            const int index = store::find_item(fields[0].c_str());
+            if (index < 0) continue;
+            const char* from = fields[3].c_str();
+            char* to = nullptr;
+            const long price = std::strtol(from, &to, 10);
+            if (to == from || price < 0) continue;
+            bool said_here = false;
+            for (const StorePrice& pr : store_prices)
+                if (pr.index == index) said_here = true;
+            if (said_here) continue;
+            StorePrice pr;
+            pr.index = index;
+            pr.price = static_cast<int>(price);
+            store_prices.push_back(pr);
+            ++said;
+        }
+        log("store_items.txt: prices said for %d of %d cards", said,
+            static_cast<int>(store::kItemCount));
+    }
+
     // One block's worth of the pillar, aired to the clients as the work of
     // the server's own nobody: a block built by a player that is not one
     // is drawn in the last colour the nobody was said to wear, so the
@@ -3461,6 +3530,13 @@ struct Server::Impl {
                     reply.rfind("The pillar is raised", 0) != 0 &&
                     reply.rfind("Not yours", 0) != 0)
                     return false;
+                return true;
+            }
+            case store::kEffectWeaponSkin: {
+                // A dress is worn, not fired: owning the card is the
+                // whole of its effect, and the client that sees the
+                // ownership puts the model set on the weapon. The arg
+                // says what it dresses; nothing here needs the number.
                 return true;
             }
             default:
@@ -7910,6 +7986,9 @@ bool Server::start(std::string& err) {
         // towerdefense.toml in the directory the server runs in, seen
         // again at every start of a tower defense world.
         s.load_turrets_tuning();
+        // The store's words for its prices, from the same file the pak
+        // ships: what the shelf says is what the purse pays.
+        s.load_store_items_txt();
         s.build_core_column();
         s.map.to_solid_map(s.phys_map);
         s.horde = std::make_unique<horde::Horde>(s.phys_map, s.horde_cfg);

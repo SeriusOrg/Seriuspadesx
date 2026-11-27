@@ -30,7 +30,7 @@ zip -r "$OUTPUT_DIR/pak005-Models.pak" Maps Models/MapObjects Models/Player Mode
 # folder below: everything the folder carries ships as pak006, while
 # the game paks above stay free of it.
 pushd TowerDefense > /dev/null
-zip -r "$OUTPUT_DIR/pak006-TowerDefense.pak" Maps Models Sounds > "$LOG_FILE"
+zip -r "$OUTPUT_DIR/pak006-TowerDefense.pak" Maps Models Sounds Store WeaponMods > "$LOG_FILE"
 popd > /dev/null
 
 zip -r "$OUTPUT_DIR/pak010-BaseSkin.pak" \

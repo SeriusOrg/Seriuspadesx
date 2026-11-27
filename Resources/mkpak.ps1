@@ -68,7 +68,8 @@ Make-Pak -PakName pak005-Models.pak -RelativePaths `
   Maps, Models/MapObjects, Models/Player, Models/Effects
 
 Make-Pak -PakName pak006-TowerDefense.pak -SourceSub TowerDefense -RelativePaths `
-  Maps, Models/Turrets, Sounds/Turrets, Sounds/Weapons/Grenade
+  Maps, Models/Turrets, Sounds/Turrets, Sounds/Weapons/Grenade, `
+  Store, WeaponMods
 
 Make-Pak -PakName pak010-BaseSkin.pak -RelativePaths `
   License/Credits-pak010-BaseSkin.md,

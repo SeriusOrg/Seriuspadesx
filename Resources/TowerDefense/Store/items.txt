@@ -1,13 +1,17 @@
 # The store's own words: one line a card,
 # "sku | name | description | price".
-# The prices here must say the same as the [store] of
-# towerdefense.toml, for the wire carries none of them.
+# The price here is the one the server charges: it reads this file
+# beside the exe, the client reads it in the pak, and the [store] of
+# towerdefense.toml can still override a card by its price_<sku>.
 # A line whose sku the catalogue does not know is passed over,
 # and what a line leaves out falls back to the catalogue's words.
 
 rifle | Rifle | Standard issue. Always yours. | 0
 smg | SMG | Fast and light. | 20
 shotgun | Shotgun | A close-range answer. | 30
+sv99 | SV99 Forest Camo | A bolt sniper's dress for the rifle. | 60
+minigun | M134 Minigun | A handheld minigun's dress for the SMG. | 80
+sword | Bastard Sword | A bastard sword's dress for the spade. | 40
 rifle_dmg1 | Rifle: heavy round | +1 damage band, rifle. | 25
 rifle_dmg2 | Rifle: heaviest | Another damage band. | 40
 smg_dmg1 | SMG: heavy round | +1 damage band, SMG. | 30
