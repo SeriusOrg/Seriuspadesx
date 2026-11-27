@@ -1780,6 +1780,21 @@ struct Server::Impl {
         p.gun.restock();
     }
 
+    // The gun's own two counts, told to its owner alone: the clip it
+    // holds and the reserve behind it, the same word a finished reload
+    // speaks, which the owner reads as a plain resync when no reload of
+    // theirs is playing. Each count is a byte on the wire, so a reserve
+    // past 255 is said as 255.
+    void send_gun_state(Player& p) {
+        ByteWriter bw;
+        bw.write_u8(static_cast<uint8_t>(PacketId::WeaponReload));
+        bw.write_u8(static_cast<uint8_t>(p.id));
+        bw.write_u8(static_cast<uint8_t>(std::max(0, p.gun.ammo)));
+        const int reserve = std::min(255, std::max(0, p.gun.stock));
+        bw.write_u8(static_cast<uint8_t>(reserve));
+        send(p, bw);
+    }
+
     // Training never runs out: a person nearly out of reserve ammo, grenades or
     // blocks is given more (Restock: health, grenades, blocks and reserve to
     // full on the client too). Only when nearly out, since a restock plays its
@@ -3434,12 +3449,21 @@ struct Server::Impl {
         // once instead of at its next spawn. A card that cannot be
         // carried out is refused, the ownership is taken back, and the
         // purse pays nothing.
+        const int rung_before = p.gun.tier;
         ++p.store_level[static_cast<size_t>(index)];
         if (!store_apply(p, index)) {
             --p.store_level[static_cast<size_t>(index)];
             return;
         }
         p.zc -= price;
+        // A dress that moved the held gun's rung hands it over loaded:
+        // the new magazine is filled and told at once, without a reload
+        // asked. The ammo card fills too; until now its fill went
+        // unannounced, the owner counting the old rounds until a reload.
+        const bool rung_moved = p.gun.tier != rung_before;
+        if (rung_moved) p.gun.reset();
+        if (rung_moved || item.effect == store::kEffectAmmo)
+            send_gun_state(p);
         system_chat(std::string(item.label) + " bought for " +
                         std::to_string(price) + " Zedcreds; " +
                         std::to_string(p.zc) + " in hand.", p.id);
@@ -6584,16 +6608,9 @@ struct Server::Impl {
             if (p.gun.update(world_time)) {
                 // Tower Defense never runs out of rounds: the reserve is
                 // topped back up behind every answer, so the count the
-                // packet carries never falls. The count is a byte on the
-                // wire, so a reserve past 255 is said as 255.
+                // packet carries never falls.
                 if (tower_defense_mode()) p.gun.restock();
-                const int reserve = std::min(255, std::max(0, p.gun.stock));
-                ByteWriter bw;
-                bw.write_u8(static_cast<uint8_t>(PacketId::WeaponReload));
-                bw.write_u8(static_cast<uint8_t>(p.id));
-                bw.write_u8(static_cast<uint8_t>(std::max(0, p.gun.ammo)));
-                bw.write_u8(static_cast<uint8_t>(reserve));
-                send(p, bw);
+                send_gun_state(p);
             }
             if (!p.alive) {
                 if (p.respawn_at >= 0 && world_time >= p.respawn_at) spawn(p);
