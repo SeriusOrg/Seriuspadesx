@@ -29,12 +29,14 @@ namespace tiers {
 
     constexpr GunSpec kGuns[3][4] = {
         {   // rifle: the M14, the Ballista, the SV99. The M14 is the
-            // class's own starting shape: its trigger speaks at the
-            // base cadence, only its clip and its rounds run lighter.
+            // class's own starting shape: one round a second, a
+            // magazine of seven, and the stock table's own damage;
+            // the paid rungs climb the cadence and double it twice
+            // over.
             {0.5F, 10, 50, 2.5F, false, {49, 100, 33, 33}, 1.0F},
-            {0.5F, 7, 35, 2.5F, false, {29, 60, 20, 20}, 1.0F},
-            {0.8333F, 10, 50, 2.5F, false, {49, 100, 33, 33}, 1.0F},
-            {0.6667F, 11, 55, 2.5F, false, {98, 200, 66, 66}, 1.0F},
+            {1.0F, 7, 35, 2.5F, false, {49, 100, 33, 33}, 1.0F},
+            {0.9091F, 10, 50, 2.5F, false, {98, 200, 66, 66}, 1.0F},
+            {0.6667F, 14, 70, 2.5F, false, {196, 400, 132, 132}, 1.0F},
         },
         {   // SMG: the AK-47, the M4 Magpul, the M134
             {0.11F, 30, 120, 2.5F, false, {29, 75, 18, 18}, 1.0F},
