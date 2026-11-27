@@ -30,4 +30,11 @@ namespace spades {
 
 	/** Whether the paks hold this file. */
 	bool PakFileExists(const std::string& path);
+
+	/** Whether the dress the gun wears ships the file at `path`: true
+	 * with no dress worn, and with one only when its pak carries the
+	 * file, so a dress that ships none of its own sights leaves them
+	 * out rather than carrying the stock ones on a body they were
+	 * never carved for. */
+	bool WeaponDressShips(int gun, const std::string& path);
 }

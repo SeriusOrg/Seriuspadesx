@@ -66,6 +66,20 @@ namespace spades {
 		return path;
 	}
 
+	// Whether the dress a gun wears ships the file at `path`: true
+	// with no dress worn, so the stock piece shows, and with one only
+	// when its pak carries the file, so a dress that ships none of
+	// its own sights leaves them out rather than carrying the stock
+	// ones on a body they were never carved for.
+	bool WeaponDressShips(int gun, const std::string& path) {
+		if (gun < 0 || gun > 3)
+			return true;
+		const std::string& dress = g_dress[gun];
+		if (dress.empty())
+			return true;
+		return PakFileExists(dress + path);
+	}
+
 	class WeaponDressScriptObjectRegistrar : public ScriptObjectRegistrar {
 	public:
 		WeaponDressScriptObjectRegistrar()
@@ -80,6 +94,10 @@ namespace spades {
 					r = eng->RegisterGlobalFunction(
 					  "string WeaponDressPath(int, const string& in)",
 					  asFUNCTION(DressPath), asCALL_CDECL);
+					manager->CheckError(r);
+					r = eng->RegisterGlobalFunction(
+						  "bool WeaponDressShips(int, const string& in)",
+						  asFUNCTION(WeaponDressShips), asCALL_CDECL);
 					manager->CheckError(r);
 					break;
 				default:
