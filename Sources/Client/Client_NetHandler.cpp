@@ -110,6 +110,11 @@ namespace spades {
 			inGameLimbo = false;
 			limboMenu->Close();
 			limboTeamChosen = true;
+
+			// The gun this body was made holding climbs to the rung the
+			// store's word says (a respawn makes the weapon anew, its
+			// tier with it).
+			ApplyWeaponTiers();
 		}
 
 		void Client::JoinedGame() {

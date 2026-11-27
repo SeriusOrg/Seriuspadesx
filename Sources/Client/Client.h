@@ -1261,8 +1261,12 @@ namespace spades {
 			/** The Tower Defense store's standing applied whole: the purse, the
 			 * wave and core, and every upgrade this player owns. The store UI
 			 * reads it; the server is the only writer. Defined in Smoke.cpp,
-			 * beside the turret apply it follows. */
-			void ApplyStoreState(const StoreState& state) { storeState = state; }
+			 * beside the turret apply it follows. The local player's guns and
+			 * spade take their ladder rungs from it. */
+			void ApplyStoreState(const StoreState& state) {
+				storeState = state;
+				ApplyWeaponTiers();
+			}
 			const StoreState& GetStoreState() const { return storeState; }
 
 			/** The dress a gun of this player wears: the best upgrade
@@ -1274,6 +1278,19 @@ namespace spades {
 			 * of its class's ladder, zero for the stock weapon. The
 			 * charm a gun shows is chosen by it. */
 			int WeaponDressTierFor(int gun) const;
+			/** The rung of its ladder a gun FIGHTS at: the best dress
+			 * tier owned, never below the ladder's floor of one when
+			 * the store has stood in this world (the first rung is the
+			 * class's own starting shape, free), zero for the stock
+			 * gun when it has not. The stats of each rung are the
+			 * tiers table's. Defined in Client.cpp. */
+			int WeaponGameTierFor(int gun) const;
+			/** The local player's gun in hand and spade climb to the
+			 * rungs the store's word says, their stats, reach and
+			 * recoil read from the tiers table. Called whenever the
+			 * store's word lands and whenever the local player is
+			 * made anew. Defined in Client.cpp. */
+			void ApplyWeaponTiers();
 			/** The path a dressed gun loads a file at: the dress's own file
 			 * when the pak ships one, the stock path when it does not. */
 			std::string WeaponDressPath(int gun, const char* stock) const;

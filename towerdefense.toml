@@ -92,6 +92,25 @@ price_turret1 = 5
 price_turret2 = 10
 price_turret3 = 30
 
+# The dresses, a rung a line: the rifle and the SMG climb three, their
+# tier 1 the class's own starting shape, free (granted at spawn, so a
+# price above zero here is a price the rung is simply bought at); the
+# shotgun and the spade start at tier 2, their stock shape being their
+# first rung; the grenade wears the RPG. A tier is looks AND numbers:
+# the stats a class fights with climb the ladder in the code's tiers
+# table - damage, magazine, pace, the spade's reach.
+price_rifle_lvl1 = 0
+price_rifle_lvl2 = 100
+price_rifle_lvl3 = 150
+price_smg_lvl1 = 0
+price_smg_lvl2 = 100
+price_smg_lvl3 = 150
+price_shotgun_lvl2 = 60
+price_shotgun_lvl3 = 120
+price_spade_lvl2 = 30
+price_spade_lvl3 = 60
+price_rpg = 120
+
 # The brutes of the horde, the specials of the waves. Each name reads
 # its own words: the first wave it stands in, and the Zedcred its kill
 # pays over the grunt rate. A brute of the chance rolls a d100 for its

@@ -175,12 +175,16 @@ constexpr Item kItems[] = {
     // choice to make: a class wears the highest tier its owner has
     // bought, so a class's dresses are tiers of one ladder, each
     // asking for the one below it (prereq), and the stock gun is where
-    // every ladder starts. The rifle and the SMG climb three paid
-    // rungs; the shotgun and the spade start theirs at tier 2, their
-    // stock shape being their tier 1; the grenade has one rung. The
-    // charm a dressed gun shows rides on the tier: bullet at 1, skull
-    // at 2, creep at 3.
-    {"rifle_lvl1", "M14 Battle Rifle", "A battle rifle's dress, tier 1.", 50,
+    // every ladder starts. The rifle and the SMG climb three rungs,
+    // their tier 1 a dress of the gun's own (free: a dress priced at
+    // zero is granted to every defender at spawn, so the ladder's
+    // floor is worn from the first breath); the shotgun and the spade
+    // start theirs at tier 2, their stock shape being their tier 1;
+    // the grenade has one rung. A tier is looks AND numbers: the
+    // stats a class fights with climb the ladder in WeaponTiers.h.
+    // The charm a dressed gun shows rides on the tier: bullet at 1,
+    // skull at 2, creep at 3.
+    {"rifle_lvl1", "M14 Battle Rifle", "A battle rifle's dress, tier 1.", 0,
      kGuns, kEffectWeaponSkin, 0, 1, kNone,
      "WeaponMods/RifleLvl1/Models/Weapons/Rifle/Weapon.kv6",
      nullptr, "WeaponMods/RifleLvl1/", 1},
@@ -192,7 +196,7 @@ constexpr Item kItems[] = {
      kGuns, kEffectWeaponSkin, 0, 1, 26,
      "WeaponMods/RifleLvl3/Models/Weapons/Rifle/Weapon.kv6",
      nullptr, "WeaponMods/RifleLvl3/", 3},
-    {"smg_lvl1", "AK-47", "The classic's dress, tier 1.", 50,
+    {"smg_lvl1", "AK-47", "The classic's dress, tier 1.", 0,
      kGuns, kEffectWeaponSkin, 1, 1, kNone,
      "WeaponMods/SMGLvl1/Models/Weapons/SMG/Weapon.kv6",
      nullptr, "WeaponMods/SMGLvl1/", 1},

@@ -11,6 +11,7 @@
 #include "TrainingModes.h"
 #include "Vec3.h"
 #include "VoxelMap.h"
+#include "WeaponTiers.h"
 
 #include <enet/enet.h>
 #ifdef _WIN32
@@ -60,7 +61,6 @@ constexpr float kMaxBlockDistance = 6.0f;
 constexpr float kMaxDigDistance = 6.0f;
 constexpr float kMeleeDistance = 3.0f;
 constexpr int kBuildTolerance = 5;
-constexpr int kMeleeDamage = 100;
 // Player ids are a byte and 255 means nobody.
 constexpr int kSlots = 255;
 constexpr double kTick = 1.0 / 60.0;
@@ -382,30 +382,24 @@ bool near3(const Vec3& a, const Vec3& b, float d) {
 //
 // The magazine is modelled because the replies depend on it: a reload that
 // finishes is announced to its owner with the new clip and reserve, and that
-// packet is how the client learns the reload is over.
-struct GunSpec {
-    float delay;
-    int clip, stock;
-    float reload_time;
-    bool slow;
-    int damage[4];
-};
-constexpr GunSpec kGuns[3] = {
-    {0.5f, 10, 50, 2.5f, false, {49, 100, 33, 33}},    // rifle
-    {0.11f, 30, 120, 2.5f, false, {29, 75, 18, 18}},   // SMG
-    {1.0f, 6, 48, 0.5f, true, {27, 37, 16, 16}},       // shotgun
-};
+// packet is how the client learns the reload is over. The numbers live in
+// WeaponTiers.h - one row a rung of the ladder the store sells, rung 0 the
+// classic table - so the client that aims and reloads by the same table can
+// never disagree with the server that pays the damage out of it.
 constexpr int kClipTolerance = 10;
 
 struct Gun {
     int type = 0;
+    int tier = 0;   // the ladder's rung: 0 the stock gun, 1-3 the store's
     int ammo = 10, stock = 50;
     // Rounds fired, ever, for the aim scenarios' accuracy (see fired_by).
     int fired = 0;
     bool shoot = false, reloading = false;
     double shoot_time = 0, next_shot = 0, reload_at = 0;
 
-    const GunSpec& spec() const { return kGuns[type]; }
+    const training::tiers::GunSpec& spec() const {
+        return training::tiers::kGuns[type][tier];
+    }
     void reset() {
         shoot = false;
         reloading = false;
@@ -1775,6 +1769,7 @@ struct Server::Impl {
         p.weapon = std::min(std::max(weapon, 0), 2);
         p.gun = Gun{};
         p.gun.type = p.weapon;
+        p.gun.tier = gun_tier(p, p.weapon);
         p.gun.reset();
     }
 
@@ -1830,6 +1825,24 @@ struct Server::Impl {
             p.zc = economy.start;
             system_chat(std::to_string(p.zc) + " Zedcreds in hand.", p.id);
         }
+        // The ladder's first rungs are free to every defender: a dress
+        // that costs nothing is owned by all, granted here rather than
+        // merely priced at zero so a player who never opens the store
+        // still wears one. The class's stats climb with the rung.
+        if (tower_defense_mode() && p.playing() && !p.zombie) {
+            bool granted = false;
+            for (size_t i = 0; i < store::kItemCount; ++i) {
+                const store::Item& it = store::kItems[i];
+                if (it.effect != store::kEffectWeaponSkin ||
+                    it.tier != 1)
+                    continue;
+                if (store_price(static_cast<int>(i)) != 0) continue;
+                if (p.store_level[i] >= 1) continue;
+                p.store_level[i] = 1;
+                granted = true;
+            }
+            if (granted) store_state_send();
+        }
         ByteWriter bw;
         bw.write_u8(static_cast<uint8_t>(PacketId::CreatePlayer));
         bw.write_u8(static_cast<uint8_t>(p.id));
@@ -1855,6 +1868,8 @@ struct Server::Impl {
             p.alive = true;
             p.tool = kToolWeapon;
             if (p.zombie) p.tool = kToolSpade;   // it never fires a shot
+            p.gun.type = p.weapon;
+            p.gun.tier = gun_tier(p, p.weapon);
             p.gun.reset();
             refill(p);
             bw.write_vec(at);
@@ -3447,6 +3462,25 @@ struct Server::Impl {
         system_chat(text, p.id);
     }
 
+    // The rung of its ladder a class fights at: the best dress tier
+    // owned for the gun, never below the ladder's floor of one - the
+    // first rung is the class's own starting shape, free to everyone.
+    // Zero outside Tower Defense, where the range's guns stay stock.
+    // The spade is gun 3: its own ladder is read the same way.
+    int gun_tier(const Player& p, int gun) const {
+        if (!tower_defense_mode() || gun < 0 || gun > 3) return 0;
+        int best = 1;
+        for (size_t i = 0; i < store::kItemCount; ++i) {
+            const store::Item& it = store::kItems[i];
+            if (it.effect != store::kEffectWeaponSkin || it.dress == nullptr)
+                continue;
+            if (static_cast<int>(it.arg) != gun) continue;
+            if (p.store_level[i] < 1 || it.tier <= best) continue;
+            best = it.tier;
+        }
+        return best;
+    }
+
     // The price an item asks, the TOML's word for it when there is one.
     int store_price(int index) const {
         if (index < 0 || static_cast<size_t>(index) >= store::kItemCount)
@@ -3534,10 +3568,15 @@ struct Server::Impl {
                 return true;
             }
             case store::kEffectWeaponSkin: {
-                // A dress is worn, not fired: owning the card is the
-                // whole of its effect, and the client that sees the
-                // ownership puts the model set on the weapon. The arg
-                // says what it dresses; nothing here needs the number.
+                // A dress is worn, not fired - but its rung is: the
+                // tier's stats take over the gun in hand at once, the
+                // magazine growing into the shape the next reload
+                // fills. The rest climb at their next spawn.
+                const int gun = item.arg;
+                if (gun >= 0 && gun <= 2 && gun == p.gun.type) {
+                    const int tier = gun_tier(p, gun);
+                    if (tier != p.gun.tier) p.gun.tier = tier;
+                }
                 return true;
             }
             default:
@@ -7314,8 +7353,14 @@ struct Server::Impl {
         int amount;
         if (melee) {
             if (p.tool != kToolSpade && p.tool != kToolWeapon) return;
-            if (!near3(p.body.pos, victim.body.pos, kMeleeDistance)) return;
-            amount = kMeleeDamage;
+            // The spade's own ladder: the reach of the swing and
+            // what it does to what stands in it.
+            const training::tiers::SpadeSpec& sp =
+                training::tiers::kSpade[gun_tier(p, 3)];
+            if (!near3(p.body.pos, victim.body.pos,
+                       kMeleeDistance * sp.range))
+                return;
+            amount = sp.melee_damage;
         } else {
             if (p.tool != kToolWeapon || p.gun.is_empty(world_time)) return;
             // The damage bands the store sold, paid one shot at a time.
@@ -7409,7 +7454,10 @@ struct Server::Impl {
                 system_chat("The core cannot be torn down.", p.id);
                 return;
             }
-            if (p.tool == kToolSpade && !within(kMaxDigDistance)) return;
+            if (p.tool == kToolSpade &&
+                !within(kMaxDigDistance *
+                        training::tiers::kSpade[gun_tier(p, 3)].range))
+                return;
             std::vector<Cell> removed;
             if (value == kDestroyBlock) {
                 if (map.destroy_point(x, y, z, &removed)) p.blocks = std::min(50, p.blocks + 1);

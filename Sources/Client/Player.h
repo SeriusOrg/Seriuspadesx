@@ -87,6 +87,12 @@ namespace spades {
 
 			WeaponType weaponType;
 			std::unique_ptr<Weapon> weapon;
+			// The Tower Defense spade's ladder, set by the client from
+			// the store's word (the local player only): the reach of
+			// the swing, and how hard it bites a block. 1.0F for
+			// the stock spade and every world the store never stood in.
+			float spadeRangeScale = 1.0F;
+			float spadeDamageScale = 1.0F;
 			int playerId;
 			int teamId;
 
@@ -165,6 +171,14 @@ namespace spades {
 			int GetId() { return playerId; }
 			Weapon& GetWeapon();
 			WeaponType GetWeaponType() { return weaponType; }
+			/** The Tower Defense spade's ladder, set by the client from
+			 * the store's word (the local player only): the reach of
+			 * the swing and how hard it bites a block, as shares
+			 * of the stock spade's. */
+			void SetSpadeScales(float range, float damage) {
+				spadeRangeScale = range;
+				spadeDamageScale = damage;
+			}
 			int GetTeamId() { return teamId; }
 			bool IsTeammate(Player& p) { return teamId == p.teamId; }
 			bool IsSpectator() { return teamId >= 2; }

@@ -1003,9 +1003,12 @@ namespace spades {
 					Player& other = maybeOther.value();
 					if (!other.IsAlive() || other.IsSpectator())
 						continue; // filter deads/spectators
-					// From the eye, as on a monitor (the spade is in the hand in VR).
+					// From the eye, as on a monitor (the spade is in the
+					// hand in VR). The Tower Defense ladder lends the
+					// swing its reach.
+					const float meleeRange = MELEE_DISTANCE * spadeRangeScale;
 					if ((other.GetEye() - GetEye()).GetSquaredLength() >
-						(MELEE_DISTANCE * MELEE_DISTANCE))
+					    (meleeRange * meleeRange))
 						continue; // skip players outside attack range
 					if (!other.RayCastApprox(muzzle, dir))
 						continue; // quickly reject players unlikely to be hit
@@ -1025,7 +1028,9 @@ namespace spades {
 			// ahead of the eye, and measured from there it dug further.
 			float hitBlockDist = ((dig ? blockF : shiftedPos) - GetEye()).GetChebyshevLength();
 
-			if (mapResult.hit && hitBlockDist < MAX_DIG_DISTANCE && (!hitPlayer || dig)) {
+			const float digRange = MAX_DIG_DISTANCE * spadeRangeScale;
+			if (mapResult.hit && hitBlockDist < digRange &&
+			    (!hitPlayer || dig)) {
 				if (map->IsValidMapCoord(outBlockPos.x, outBlockPos.y, outBlockPos.z)) {
 					SPAssert(map->IsSolid(outBlockPos.x, outBlockPos.y, outBlockPos.z));
 
@@ -1037,7 +1042,12 @@ namespace spades {
 					if (outBlockPos.z < map->GroundDepth()) {
 						if (!dig) {
 							uint32_t col = map->GetColor(outBlockPos.x, outBlockPos.y, outBlockPos.z);
-							int health = (col >> 24) - 50;
+							// The ladder's bite: the stock spade chips
+							// half a block's health a swing, a higher
+							// rung bites deeper.
+							const int chip =
+								static_cast<int>(50.0F * spadeDamageScale);
+							int health = static_cast<int>(col >> 24) - chip;
 							if (health <= 0) {
 								health = 0;
 								if (listener && IsLocalPlayer()) // send destroy cmd for local

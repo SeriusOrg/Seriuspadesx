@@ -29,6 +29,7 @@
 #include "Client.h"
 #include <Gui/TrainingHost.h>
 #include <Training/StoreCatalog.h>
+#include <Training/WeaponTiers.h>
 #include <ScriptBindings/WeaponDress.h>
 #include "Fonts.h"
 #include <Core/FileManager.h>
@@ -1805,6 +1806,38 @@ namespace spades {
 				best = it.tier;
 			}
 			return best;
+		}
+
+		// The rung a gun FIGHTS at: the dress tier is the word, but the
+		// ladder's floor is one - the first rung is the class's own
+		// starting shape, worn free - and only a world the store stood
+		// in has a ladder at all. Zero is the stock gun.
+		int Client::WeaponGameTierFor(int gun) const {
+			if (gun < 0 || gun > 3)
+				return 0;
+			if (!GetStoreState().received)
+				return 0;
+			const int dress = WeaponDressTierFor(gun);
+			return dress < 1 ? 1 : dress;
+		}
+
+		// The local player's gun in hand and spade, dressed in the rungs
+		// the store's word says: the stats, the reach and the kick they
+		// fight with, read from the tiers table the server pays its
+		// damage out of too. The gun's tier rides the weapon object,
+		// which a respawn makes anew; the spade's scales ride the player.
+		void Client::ApplyWeaponTiers() {
+			if (!world)
+				return;
+			stmp::optional<Player&> p = world->GetLocalPlayer();
+			if (!p)
+				return;
+			const int gun = static_cast<int>(p->GetWeaponType());
+			if (gun >= 0 && gun <= 2)
+				p->GetWeapon().SetTier(WeaponGameTierFor(gun));
+			const training::tiers::SpadeSpec& sp =
+				training::tiers::kSpade[WeaponGameTierFor(3)];
+			p->SetSpadeScales(sp.range, sp.chip);
 		}
 
 		// A file a dressed gun loads: the dress's own when its pak ships

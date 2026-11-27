@@ -23,6 +23,7 @@
 #include "GameProperties.h"
 #include "IWorldListener.h"
 #include "World.h"
+#include <Training/WeaponTiers.h>
 #include <Core/Debug.h>
 #include <Core/Exception.h>
 
@@ -41,7 +42,8 @@ namespace spades {
 		      reloadEndTime(-100.0F),
 		      unconfirmedShells(0),
 		      lastReloadActivityTime(0.0F),
-		      lastDryFire(false) {
+		      lastDryFire(false),
+		      tier(0) {
 			SPADES_MARK_FUNCTION();
 		}
 
@@ -305,83 +307,108 @@ namespace spades {
 			return inProgress;
 		}
 
+		// The 0.75 weapons: their numbers are the Tower Defense ladder's
+		// table, read at the rung the client set (rung 0 for the stock
+		// gun, a world the store never stood in) - the same table the
+		// server pays its damage out of, so the aim, the reload and
+		// the HUD can never disagree with the hits that land.
 		class RifleWeapon3 : public Weapon {
+			const training::tiers::GunSpec& spec() const {
+				return training::tiers::kGuns[0][GetTier()];
+			}
 		public:
 			RifleWeapon3(World& w, Player& p) : Weapon(w, p) {}
 			std::string GetName() override { return "Rifle"; }
-			float GetDelay() override { return 0.5F; }
-			int GetClipSize() override { return 10; }
-			int GetMaxStock() override { return 50; }
-			float GetReloadTime() override { return 2.5F; }
+			float GetDelay() override { return spec().delay; }
+			int GetClipSize() override { return spec().clip; }
+			int GetMaxStock() override { return spec().stock; }
+			float GetReloadTime() override { return spec().reload_time; }
 			float GetEjectBrassTime() override { return 0.0F; }
-			bool IsReloadSlow() override { return false; }
+			bool IsReloadSlow() override { return spec().slow; }
 			WeaponType GetWeaponType() override { return RIFLE_WEAPON; }
 			int GetDamage(HitType type) override {
+				const int* d = spec().damage;
 				switch (type) {
-					case HitTypeTorso: return 49;
-					case HitTypeHead: return 100;
-					case HitTypeArms: return 33;
-					case HitTypeLegs: return 33;
+					case HitTypeTorso: return d[0];
+					case HitTypeHead: return d[1];
+					case HitTypeArms: return d[2];
+					case HitTypeLegs: return d[3];
 					case HitTypeBlock: return 50;
 					default: SPAssert(false); return 0;
 				}
 			}
-			Vector2 GetRecoil() override { return MakeVector2(0.0001F, 0.05F); }
+			Vector2 GetRecoil() override {
+				const float m = spec().recoil;
+				return MakeVector2(0.0001F * m, 0.05F * m);
+			}
 			float GetSpread() override { return 0.006F; }
 			int GetPelletSize() override { return 1; }
 		};
 
 		class SMGWeapon3 : public Weapon {
+			const training::tiers::GunSpec& spec() const {
+				return training::tiers::kGuns[1][GetTier()];
+			}
 		public:
 			SMGWeapon3(World& w, Player& p) : Weapon(w, p) {}
 			std::string GetName() override { return "SMG"; }
-			float GetDelay() override { return 0.1F; }
-			int GetClipSize() override { return 30; }
-			int GetMaxStock() override { return 120; }
-			float GetReloadTime() override { return 2.5F; }
+			float GetDelay() override { return spec().delay; }
+			int GetClipSize() override { return spec().clip; }
+			int GetMaxStock() override { return spec().stock; }
+			float GetReloadTime() override { return spec().reload_time; }
 			float GetEjectBrassTime() override { return 0.0F; }
-			bool IsReloadSlow() override { return false; }
+			bool IsReloadSlow() override { return spec().slow; }
 			WeaponType GetWeaponType() override { return SMG_WEAPON; }
 			int GetDamage(HitType type) override {
+				const int* d = spec().damage;
 				switch (type) {
-					case HitTypeTorso: return 29;
-					case HitTypeHead: return 75;
-					case HitTypeArms: return 18;
-					case HitTypeLegs: return 18;
+					case HitTypeTorso: return d[0];
+					case HitTypeHead: return d[1];
+					case HitTypeArms: return d[2];
+					case HitTypeLegs: return d[3];
 					case HitTypeBlock: return 34;
 					default: SPAssert(false); return 0;
 				}
 			}
-			Vector2 GetRecoil() override { return MakeVector2(0.00005F, 0.0125F); }
+			Vector2 GetRecoil() override {
+				const float m = spec().recoil;
+				return MakeVector2(0.00005F * m, 0.0125F * m);
+			}
 			float GetSpread() override { return 0.012F; }
 			int GetPelletSize() override { return 1; }
 		};
 
 		class ShotgunWeapon3 : public Weapon {
+			const training::tiers::GunSpec& spec() const {
+				return training::tiers::kGuns[2][GetTier()];
+			}
 		public:
 			ShotgunWeapon3(World& w, Player& p) : Weapon(w, p) {}
 			std::string GetName() override { return "Shotgun"; }
-			float GetDelay() override { return 1.0F; }
-			int GetClipSize() override { return 6; }
-			int GetMaxStock() override { return 48; }
-			float GetReloadTime() override { return 0.5F; }
+			float GetDelay() override { return spec().delay; }
+			int GetClipSize() override { return spec().clip; }
+			int GetMaxStock() override { return spec().stock; }
+			float GetReloadTime() override { return spec().reload_time; }
 			float GetEjectBrassTime() override { return 0.6F; }
-			bool IsReloadSlow() override { return true; }
+			bool IsReloadSlow() override { return spec().slow; }
 			WeaponType GetWeaponType() override { return SHOTGUN_WEAPON; }
 			int GetDamage(HitType type) override {
+				const int* d = spec().damage;
 				switch (type) {
-					case HitTypeTorso: return 27;
-					case HitTypeHead: return 37;
-					case HitTypeArms: return 16;
-					case HitTypeLegs: return 16;
-					case HitTypeBlock:
-						// Actually, you cast a hit per pellet.
-						// --GM
-						return 34;
+					case HitTypeTorso: return d[0];
+					case HitTypeHead: return d[1];
+					case HitTypeArms: return d[2];
+					case HitTypeLegs: return d[3];
+					// Actually, you cast a hit per pellet.
+					// --GM
+					case HitTypeBlock: return 34;
 					default: SPAssert(false); return 0;
 				}
 			}
-			Vector2 GetRecoil() override { return MakeVector2(0.0002F, 0.1F); }
+			Vector2 GetRecoil() override {
+				const float m = spec().recoil;
+				return MakeVector2(0.0002F * m, 0.1F * m);
+			}
 			float GetSpread() override { return 0.024F; }
 			int GetPelletSize() override { return 8; }
 		};

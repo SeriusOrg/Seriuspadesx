@@ -4,6 +4,7 @@
 // is not itself, and every price is one the store can be paid.
 #include <Training/Protocol.h>
 #include <Training/StoreCatalog.h>
+#include <Training/WeaponTiers.h>
 #include <Client/StoreParser.h>
 
 #include <cstdio>
@@ -113,6 +114,58 @@ int main() {
                 item(j).effect == training::store::kEffectWeaponSkin &&
                 item(i).arg == item(j).arg)
                 CHECK(item(i).tier != item(j).tier);
+
+    // --- the ladders the classes climb -----------------------------------
+    // WeaponTiers.h: rung 0 the classic table, rungs 1 to 3 the stats the
+    // store sells. The server pays its damage out of this table and the
+    // client aims, reloads and shows its numbers by it, so the classic row
+    // is pinned hard: drift there would change every world the store
+    // never stood in.
+    for (int g = 0; g < 3; ++g) {
+        const auto& stock = training::tiers::kGuns[g][0];
+        CHECK(stock.delay > 0.0F && stock.delay < 2.0F);
+        CHECK(stock.clip > 0);
+        CHECK(stock.stock >= stock.clip);
+        CHECK(stock.reload_time > 0.0F);
+        for (int d : stock.damage) CHECK(d > 0);
+        CHECK(stock.recoil == 1.0F);
+        for (int t = 1; t <= 3; ++t) {
+            const auto& rung = training::tiers::kGuns[g][t];
+            CHECK(rung.delay > 0.0F);
+            for (int d : rung.damage) CHECK(d > 0);
+            CHECK(rung.recoil > 0.0F);
+            if (t == 1)
+                continue;
+            // A paid rung never shrinks the magazine nor the reserve
+            // below the rung below it (the floor may sit under the
+            // stock gun: the ladder starts at the class's own shape).
+            const auto& prev = training::tiers::kGuns[g][t - 1];
+            CHECK(rung.clip >= prev.clip);
+            CHECK(rung.stock >= prev.stock);
+        }
+    }
+    // The spade's own ladder: the stock reach at the floor, the longer
+    // arm from rung 2, the doubled bite at the top.
+    CHECK(training::tiers::kSpade[0].range == 1.0F);
+    CHECK(training::tiers::kSpade[1].range == 1.0F);
+    CHECK(training::tiers::kSpade[2].range == 1.5F);
+    CHECK(training::tiers::kSpade[3].range == 1.5F);
+    CHECK(training::tiers::kSpade[3].melee_damage ==
+          2 * training::tiers::kSpade[2].melee_damage);
+    CHECK(training::tiers::kSpade[3].chip == 2.0F);
+
+    // --- the ladder's floor is free --------------------------------------
+    // A dress priced at zero is granted to every defender at spawn, so
+    // the first rungs the classes wear are free: exactly the two whose
+    // first rung is a dress of the gun's own.
+    {
+        int free_dresses = 0;
+        for (size_t i = 0; i < n; ++i)
+            if (item(i).effect == training::store::kEffectWeaponSkin &&
+                item(i).price == 0 && item(i).tier == 1)
+                ++free_dresses;
+        CHECK(free_dresses == 2);
+    }
 
     // --- every shelf is stocked --------------------------------------------
     for (int cat = 0; cat < training::store::kCategoryCount; ++cat) {
