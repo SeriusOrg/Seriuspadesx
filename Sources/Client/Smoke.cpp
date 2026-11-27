@@ -385,14 +385,9 @@ namespace spades {
 				client.ApplyStoreState(state);
 				// Said on every word so a buy that never shows on the
 				// hand can be told from a store that was never heard.
-				SPLog("Store word heard: %d owned, %d Zedcreds, "
-				      "equip #%d #%d #%d #%d",
+				SPLog("Store word heard: %d owned, %d Zedcreds",
 				      static_cast<int>(state.ownedCount),
-				      static_cast<int>(state.zedcreds),
-				      static_cast<int>(state.equip[0]),
-				      static_cast<int>(state.equip[1]),
-				      static_cast<int>(state.equip[2]),
-				      static_cast<int>(state.equip[3]));
+				      static_cast<int>(state.zedcreds));
 			} break;
 				default:
 					SPLog("Ignoring an unknown Smoke sub packet %d", sub);

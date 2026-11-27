@@ -64,8 +64,12 @@ struct Item {
     const char* icon;        // Gfx/Hotbar sprite fallback, or nullptr
     // A weapon dress rides in its own pak folder, and the client puts
     // that folder in front of the stock paths the skin scripts load:
-    // nullptr for everything that is not a dress.
+    // nullptr for everything that is not a dress. A dress also sits in
+    // its class's upgrade ladder - tier 1, 2 or 3 - and the class wears
+    // the highest tier its owner has bought: 0 for everything that is
+    // not a dress.
     const char* dress;
+    uint8_t tier;
 };
 
 constexpr uint8_t kNone = 255;
@@ -164,23 +168,27 @@ constexpr Item kItems[] = {
 
     // --- Weapon dresses ------------------------------------------------------
     // The mods the archive carries, a dress each: a model set the client
-    // puts on a weapon the player already holds. Owning the card is the
-    // whole of the server's effect; the client reads the ownership and
-    // dresses the weapon it holds, the arg saying what - 0 rifle,
-    // 1 SMG, 2 shotgun, 3 spade - and Store/items.txt saying the words
-    // and the price of every one of them.
+    // puts on the class's own weapon. Owning the card is the whole of
+    // the server's effect; the client reads the ownership and dresses
+    // the weapon it holds, the arg saying what - 0 rifle, 1 SMG,
+    // 2 shotgun, 3 spade. There is no worn-or-put-away choice to make:
+    // a class wears the highest tier its owner has bought, so a class's
+    // dresses are tiers of one ladder, each asking for the one below it
+    // (prereq), and the stock gun is where every ladder starts. A new
+    // skin is a new rung: a tier-2 card with the tier-1 card as its
+    // prereq, at a price the ladder's climb should ask.
     {"sv99", "SV99 Forest Camo", "A bolt sniper's dress for the rifle.", 60,
      kGuns, kEffectWeaponSkin, 0, 1, kNone,
      "WeaponMods/SV99_Forest_Camo/Models/Weapons/Rifle/Weapon.kv6",
-     nullptr, "WeaponMods/SV99_Forest_Camo/"},
+     nullptr, "WeaponMods/SV99_Forest_Camo/", 1},
     {"minigun", "M134 Minigun", "A handheld minigun's dress for the SMG.", 80,
      kGuns, kEffectWeaponSkin, 1, 1, kNone,
      "WeaponMods/M134_Minigun/Models/Weapons/SMG/Weapon.kv6",
-     nullptr, "WeaponMods/M134_Minigun/"},
+     nullptr, "WeaponMods/M134_Minigun/", 1},
     {"sword", "Bastard Sword", "A bastard sword's dress for the spade.", 40,
      kGuns, kEffectWeaponSkin, 3, 1, kNone,
      "WeaponMods/Bastard_Sword/Models/Weapons/Spade/Spade.kv6",
-     nullptr, "WeaponMods/Bastard_Sword/"},
+     nullptr, "WeaponMods/Bastard_Sword/", 1},
 };
 
 constexpr size_t kItemCount = sizeof(kItems) / sizeof(kItems[0]);

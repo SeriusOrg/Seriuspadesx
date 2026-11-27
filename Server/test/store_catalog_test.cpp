@@ -54,6 +54,13 @@ int main() {
             CHECK(item(i).dress != nullptr && item(i).dress[0] != '\0');
             CHECK(item(i).arg <= 3);
         }
+        // A dress is a rung of its class's upgrade ladder, and nothing
+        // else sits on a ladder: the class wears the highest tier its
+        // owner has bought, so a tier is 1, 2 or 3.
+        if (eff == training::store::kEffectWeaponSkin)
+            CHECK(item(i).tier >= 1 && item(i).tier <= 3);
+        else
+            CHECK(item(i).tier == 0);
     }
 
     // --- the SKUs are unique, both as words and as find_item inputs --------
@@ -97,6 +104,16 @@ int main() {
         CHECK(item(i).prereq < i);
     }
 
+    // --- a class's dress tiers are distinct ----------------------------------
+    // The class wears the highest tier bought, so two dresses of one
+    // class on one tier would put two bests on one gun.
+    for (size_t i = 0; i < n; ++i)
+        for (size_t j = i + 1; j < n; ++j)
+            if (item(i).effect == training::store::kEffectWeaponSkin &&
+                item(j).effect == training::store::kEffectWeaponSkin &&
+                item(i).arg == item(j).arg)
+                CHECK(item(i).tier != item(j).tier);
+
     // --- every shelf is stocked --------------------------------------------
     for (int cat = 0; cat < training::store::kCategoryCount; ++cat) {
         int count = 0;
@@ -133,8 +150,6 @@ int main() {
             out.owned[k].index = static_cast<std::uint8_t>((k * 7) % n);
             out.owned[k].level = static_cast<std::uint8_t>(k);
         }
-        out.equip[0] = static_cast<std::uint8_t>(2 % n);
-        out.equip[3] = static_cast<std::uint8_t>(5 % n);
         proto::ByteWriter bw;
         proto::write_store(bw, out);
         proto::ByteReader br(bw.data.data(), bw.data.size());
@@ -190,8 +205,6 @@ int main() {
             out.owned[k].index = static_cast<std::uint8_t>((k * 7) % n);
             out.owned[k].level = static_cast<std::uint8_t>(k);
         }
-        out.equip[1] = static_cast<std::uint8_t>(3 % n);
-        out.equip[2] = static_cast<std::uint8_t>(7 % n);
         proto::ByteWriter bw;
         proto::write_store(bw, out);
 

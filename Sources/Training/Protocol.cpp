@@ -354,8 +354,6 @@ void write_store(ByteWriter& bw, const StoreState& state) {
         bw.write_u8(state.owned[k].index);
         bw.write_u8(state.owned[k].level);
     }
-    for (uint8_t g = 0; g < 4; ++g)
-        bw.write_u8(state.equip[g]);
 }
 
 bool read_store(ByteReader& br, StoreState& state) {
@@ -373,9 +371,8 @@ bool read_store_body(ByteReader& br, StoreState& state) {
     // zedcred, wave, phase, core hp/max, gun, grenades, blocks, then the
     // count: twelve bytes, and every one of them asked for before it is
     // read rather than read and hoped. Twelve bytes with no pairs, so a
-    // fresh player who owns nothing is a Store of sixteen - the last four
-    // the dress each gun wears - and it is the first thing a new world
-    // ever says.
+    // fresh player who owns nothing is a Store of twelve, and it is the
+    // first thing a new world ever says.
     if (!br.can_read(12)) return false;
     const uint16_t zedcred = br.read_u16();
     const uint8_t wave = br.read_u8();
@@ -404,11 +401,6 @@ bool read_store_body(ByteReader& br, StoreState& state) {
         state.owned[k].index = br.read_u8();
         state.owned[k].level = br.read_u8();
     }
-    // The dress each gun wears, an index into StoreCatalog::kItems or 255
-    // for the stock weapon: four bytes, asked for like the rest.
-    if (!br.can_read(4)) return false;
-    for (int g = 0; g < 4; ++g)
-        state.equip[g] = br.read_u8();
     return true;
 }
 

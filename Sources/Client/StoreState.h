@@ -19,9 +19,6 @@ struct StoreState {
 	std::uint8_t grenades = 0;
 	std::uint8_t blocks = 0;
 
-	/** The dress each gun wears, an index into StoreCatalog::kItems that
-	 * the server says is worn, or 255 for the stock weapon. */
-	std::uint8_t equip[4] = {255, 255, 255, 255};
 	std::uint8_t ownedCount = 0;
 	struct Owned {
 		std::uint8_t index = 0;

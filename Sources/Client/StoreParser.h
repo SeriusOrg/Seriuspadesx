@@ -50,8 +50,6 @@ namespace client {
 			state.owned[k].level = s.owned[k].level;
 		}
 		state.ownedCount = static_cast<std::uint8_t>(kept);
-		for (int g = 0; g < 4; ++g)
-			state.equip[g] = s.equip[g];
 		state.received = true;
 		return true;
 	}

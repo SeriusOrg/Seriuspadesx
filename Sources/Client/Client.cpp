@@ -1752,25 +1752,34 @@ namespace spades {
 			followCameraState.enabled = IsDemoMode() || staffSpectating || (followedPlayerId != localPlayerId);
 		}
 
-		// The dress a gun wears: the one its equip names, worn only while
-		// its card is owned. A gun with no card equipped, or a world the
-		// store never stood in, wears the stock weapon.
+		// The dress a gun wears: the best upgrade owned for its class.
+		// A class's dresses are tiers of one ladder - 1, 2, 3 - and the
+		// class wears the highest tier its owner has bought, at once if
+		// the swing can show it, on the respawn a class change takes
+		// otherwise. No card owned, or a world the store never stood
+		// in, wears the stock weapon.
 		std::string Client::WeaponDressFor(int gun) const {
 			if (gun < 0 || gun > 3)
 				return "";
 			const StoreState& st = GetStoreState();
 			if (!st.received)
 				return "";
-			const std::uint8_t equipped = st.equip[gun];
-			if (equipped != 255) {
-				const auto& it =
-				  training::store::kItems[static_cast<std::size_t>(equipped)];
-				if (it.effect == training::store::kEffectWeaponSkin &&
-				    static_cast<int>(it.arg) == gun && it.dress != nullptr &&
-				    st.level_of(static_cast<int>(equipped)) >= 1)
-					return it.dress;
+			int best = 0;
+			const char* dress = nullptr;
+			for (std::size_t i = 0;
+			     i < training::store::kItemCount; ++i) {
+				const auto& it = training::store::kItems[i];
+				if (it.effect != training::store::kEffectWeaponSkin ||
+				    it.dress == nullptr ||
+				    static_cast<int>(it.arg) != gun)
+					continue;
+				if (it.tier <= best ||
+				    st.level_of(static_cast<int>(i)) < 1)
+					continue;
+				best = it.tier;
+				dress = it.dress;
 			}
-			return "";
+			return dress != nullptr ? std::string(dress) : std::string();
 		}
 
 		// A file a dressed gun loads: the dress's own when its pak ships
