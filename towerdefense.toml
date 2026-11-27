@@ -74,11 +74,13 @@ turret_refund = 70
 # and never leads, mends the worst hurt of the walking dead within
 # healer_reach blocks at the pace of a second level gun, holds the
 # tank its own waves until healer_with_tank_wave and walks beside it
-# from it on. The breaker walks its own straight line to the core and
-# digs all that stands on the line, a stroke every breaker_stroke
-# seconds, three wide and four high. All the specials stand in the
-# tread of a grunt of the wave: a walker either way, only of another
-# skin, and never a wave grown fat by its own specials.
+# from it on. The breaker walks the horde's road until it stands
+# breaker_dig_range blocks off the core, and from there walks its
+# own straight line to it and digs all that stands on the line, a
+# stroke every breaker_stroke seconds, three wide and four high. All
+# the specials stand in the tread of a grunt of the wave: a walker
+# either way, only of another skin, and never a wave grown fat by
+# its own specials.
 
 [specials]
 
@@ -137,10 +139,12 @@ healer_grows_to = 0
 healer_bounty = 8
 healer_with_tank_wave = 20
 
-# The reach of the mender, in blocks, and the pace of the breaker
-# stroke, in seconds.
+# The reach of the mender, in blocks; the pace of the breaker
+# stroke, in seconds; and the band around the core, in blocks, where
+# the breaker leaves the horde's road for its own straight line.
 healer_reach = 20.0
 breaker_stroke = 1.5
+breaker_dig_range = 50.0
 
 # The Leaper, the red one: every one of them is born a hunter of the
 # living and walks its own chase, never with the pack; the share in

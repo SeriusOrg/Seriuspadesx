@@ -861,11 +861,13 @@ struct Server::Impl {
     // The healer's own clocks and words: the beat its mend and its beds
     // ride, the beds walked a body a beat, the reach it reads the hurt
     // in; and the breaker's own pace of stroke, apart from the grunt
-    // spade its errands ride.
+    // spade its errands ride; and the band around the core, in blocks,
+    // the breaker sieges in - its line begins only inside it.
     double heal_beat_at = 0.0;
     uint8_t heal_bed_next = 0;
     float healer_reach = 20.0f;
     double breaker_stroke = 1.5;
+    double breaker_dig_range = 50.0;
     // Every leaper is born a hunter of the living; the share in a
     // hundred may soften it back for a gentler chase.
     int leaper_hunt_chance = 100;
@@ -2531,7 +2533,8 @@ struct Server::Impl {
                 // scan above would name a brute off their prefix and
                 // swallow them unread, so they step out of the scan.
                 if (key == "healer_with_tank_wave" || key == "healer_reach" ||
-                    key == "breaker_stroke" || key == "leaper_hunt_chance" ||
+                    key == "breaker_stroke" ||
+                    key == "breaker_dig_range" || key == "leaper_hunt_chance" ||
                     key == "leaper_leap_every" || key == "leaper_leap_hold" ||
                     key == "leaper_leap_perch" ||
                     key == "leaper_leap_country" ||
@@ -2598,6 +2601,8 @@ struct Server::Impl {
                         4.0f, static_cast<float>(number(value)));
                 } else if (key == "breaker_stroke") {
                     breaker_stroke = std::max(0.05, number(value));
+                } else if (key == "breaker_dig_range") {
+                    breaker_dig_range = std::max(0.0, number(value));
                 } else if (key == "leaper_hunt_chance") {
                     leaper_hunt_chance = std::min(
                         100, std::max(0, static_cast<int>(number(value))));
@@ -4348,7 +4353,10 @@ struct Server::Impl {
     // rides along unharmed and the core holds against every cell, for
     // the teeth answer the core standing on its own ground, as they do
     // for any walker that arrives. The charge sprints while the march
-    // is long, and walks the line in close.
+    // is long, and walks the line in close. And the line is a siege of
+    // the last stretch only: outside breaker_dig_range blocks of the
+    // core the breaker walks the horde's road like any walker, and
+    // steer_zombie hands it to this tick at the edge of that band.
     void breaker_tick(Player& p, int cx, int cy, int fz) {
         const float dx = static_cast<float>(horde_cfg.core_x) + 0.5f -
                          p.body.pos.x;
@@ -4529,6 +4537,18 @@ struct Server::Impl {
             (hunt_focus_->body.pos.y - p.body.pos.y) *
                 (hunt_focus_->body.pos.y - p.body.pos.y) <=
             static_cast<float>(boomer_chase * boomer_chase);
+        // The breaker's siege is the last stretch only: out past
+        // breaker_dig_range blocks of the core it walks the road the
+        // whole horde walks, and its straight line begins at the edge
+        // of that band - a tunnel is a tool of the siege, and the
+        // siege begins where the core stands within its reach.
+        const bool breaker_digs =
+            p.brute == kBreaker &&
+            (static_cast<float>(horde_cfg.core_x) + 0.5f - p.body.pos.x) *
+                (static_cast<float>(horde_cfg.core_x) + 0.5f - p.body.pos.x) +
+            (static_cast<float>(horde_cfg.core_y) + 0.5f - p.body.pos.y) *
+                (static_cast<float>(horde_cfg.core_y) + 0.5f - p.body.pos.y) <=
+            static_cast<float>(breaker_dig_range * breaker_dig_range);
         Player* pack_ahead = p.ahead_id >= 0
             ? players[static_cast<size_t>(p.ahead_id)].get() : nullptr;
         const Player* ahead =
@@ -4717,7 +4737,7 @@ struct Server::Impl {
             } else if (boomer_chases) {
                 hand_pack_over(p);
                 hunt_tick(p, cx, cy, fz);
-            } else if (p.brute == kBreaker) {
+            } else if (breaker_digs) {
                 hand_pack_over(p);
                 breaker_tick(p, cx, cy, fz);
             } else if (p.brute == kHealer && follow_the_near(p)) {
@@ -5020,8 +5040,10 @@ struct Server::Impl {
                 // the mercy rides the road to the core: a hunter
                 // wedged on walking ground rides it like any walker,
                 // and only the stands the hunt itself designs stay
-                // off it - the breaker carves on its own clock
-                !hunts_on_own && p.brute != kBreaker)
+                // off it - the breaker walking with the horde rides
+                // it, the breaker digging its line carves on its own
+                // clock
+                !hunts_on_own && !breaker_digs)
                 teleport_pinned(p);
         }
     }
