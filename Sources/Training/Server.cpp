@@ -914,10 +914,12 @@ struct Server::Impl {
     // blink says the beat.
     static constexpr uint32_t kBoomOrangeDim = 0x7A3000;
     static constexpr uint32_t kBoomRedDim = 0x8F1010;
-    // The ESP Mark flag that says the head itself: bit 2 of the
-    // mark word, MarkFlagPulseHead on a client that knows it, the
+    // The ESP Mark flag that says the head itself: MarkFlagPulseHead
+    // on a client that knows it, the 1 << 2 bit of the mark word, the
     // marked head growing and returning at the beat the mark keeps.
-    static constexpr uint8_t kMarkHeadPulse = 2;
+    // The wire word this rides answers the client enum, not its own
+    // count: a 2 here lit the name, the head never heard it.
+    static constexpr uint8_t kMarkHeadPulse = 4;
     // A wick pressed against a wall lights after this long a stand.
     static constexpr double kBoomStuck = 1.0;
     // Where the people were, a ring per slot: a sample every kPastBeat,
