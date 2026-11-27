@@ -5194,7 +5194,7 @@ struct Server::Impl {
             if (tw && least >= static_cast<float>(spitter.min_range)) {
                 p.spit_warned = true;
                 const Vec3 at{wx, wy, p.body.pos.z + 0.5f};
-                vapour(0, proto::SmokeStyle::Column, at, 1,
+                vapour(0, proto::SmokeStyle::Spray, at, 1,
                0x00, 0xFF, 0x00, 0xFF, 10, 3);
             }
         }

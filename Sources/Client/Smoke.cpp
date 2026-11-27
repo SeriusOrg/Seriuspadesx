@@ -101,6 +101,27 @@ namespace spades {
 				size = (1.0F + SampleRandomFloat() * 0.5F) * std::max(0.6F, std::min(k, 1.5F));
 				growth = 0.035F;
 				damp = 0.992F;
+			} else if (params.style == SmokeParams::Spray) {
+				// The tell a breath charges: drops of the colour itself,
+				// thrown up off the origin to fall again - the splash of
+				// blood read in the shade the server sends, a drop the
+				// size a shard of a block reads, gone almost as soon as
+				// it lands.
+				off = RandomUnitVector();
+				off *= 0.3F;
+				vel = MakeVector3((SampleRandomFloat() - 0.5F) * 3.0F,
+				                  (SampleRandomFloat() - 0.5F) * 3.0F,
+				                  -2.5F - SampleRandomFloat() * 3.5F);
+				auto drop = stmp::make_unique<ParticleSpriteEntity>(
+				  client, client.GetRenderer().RegisterWhiteImage(),
+				  params.color);
+				drop->SetTrajectory(params.origin + off, vel, 1.0F, 1.0F);
+				drop->SetRadius(0.16F + SampleRandomFloat() * 0.10F);
+				const float dropLife = 0.55F + SampleRandomFloat() * 0.30F;
+				drop->SetLifeTime(dropLife, 0.02F, dropLife * 0.5F);
+				drop->SetBlockHitAction(BlockHitAction::BounceWeak);
+				client.AddLocalEntity(std::move(drop));
+				return;
 			} else {
 				// A wide cloud, spreading low
 				off.x *= r;
@@ -153,6 +174,8 @@ namespace spades {
 				interval = 0.07F / std::max(1.0F, k);
 			else if (params.style == SmokeParams::Ground)
 				interval = 0.05F;
+			else if (params.style == SmokeParams::Spray)
+				interval = 0.03F;
 			else
 				interval = std::max(0.01F, 0.025F / (k * k));
 			puffTimer -= dt;
@@ -206,7 +229,7 @@ namespace spades {
 					p.id = r.ReadByte();
 					p.style = r.ReadByte();
 					if (p.style != SmokeParams::Column && p.style != SmokeParams::Ground &&
-					    p.style != SmokeParams::Blast)
+					    p.style != SmokeParams::Blast && p.style != SmokeParams::Spray)
 						p.style = SmokeParams::Cloud; // an unknown style: a cloud
 					const float x = r.ReadFloat(), y = r.ReadFloat(), z = r.ReadFloat();
 					p.origin = MakeVector3(x, y, z);

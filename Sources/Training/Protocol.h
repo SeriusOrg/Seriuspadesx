@@ -293,15 +293,16 @@ void write_set_outfit(ByteWriter& bw, uint8_t player, uint8_t outfit);
 // server's: sending a smoke on an id in use stops the old one, so a
 // resent smoke replaces its bed in place, and a smoke the server
 // simply stops sending burns out on its own. Style 0 grows as a cloud,
-// style 1 rises as a column, style 2 gathers at the ground; radius is
-// in blocks (1 is one bed of the way in's trail), r g b opacity are
-// bytes of 255ths, duration and fade are tenths of a second, and flags'
-// bit 0 carries the hiss - a trail carries none, or the way in is a
-// racket rather than a marker. Only ever sent to a connection
+// style 1 rises as a column, style 2 gathers at the ground, style 4
+// throws drops of the colour up off the origin to fall again; radius
+// is in blocks (1 is one bed of the way in's trail), r g b opacity
+// are bytes of 255ths, duration and fade are tenths of a second, and
+// flags' bit 0 carries the hiss - a trail carries none, or the way in
+// is a racket rather than a marker. Only ever sent to a connection
 // that claimed the extension.
 enum class SmokeSub : uint8_t { Smoke = 0, Clear = 1, Path = 2, Turret = 3, TurretShot = 4, Core = 5 };
 enum class SmokeStyle : uint8_t { Cloud = 0, Column = 1, Ground = 2,
-                                  Blast = 3 };
+                                  Blast = 3, Spray = 4 };
 // The whole packet, id included: one smoke started.
 void write_smoke(ByteWriter& bw, uint8_t id, SmokeStyle style, const struct Vec3& origin,
                  uint8_t radius, uint8_t r, uint8_t g, uint8_t b, uint8_t opacity,
