@@ -3428,12 +3428,18 @@ struct Server::Impl {
                         p.id);
             return;
         }
-        // The store takes its coin first, then asks the effect for a
-        // verdict: a card that cannot be carried out pays nothing back,
-        // it is refused before the purse is touched.
-        if (!store_apply(p, index)) return;
-        p.zc -= price;
+        // The card is owned the moment the verdict speaks, so the
+        // effects read the new rung there: a dress re-reads its gun's
+        // ladder with the rung on it, and the gun in hand climbs at
+        // once instead of at its next spawn. A card that cannot be
+        // carried out is refused, the ownership is taken back, and the
+        // purse pays nothing.
         ++p.store_level[static_cast<size_t>(index)];
+        if (!store_apply(p, index)) {
+            --p.store_level[static_cast<size_t>(index)];
+            return;
+        }
+        p.zc -= price;
         system_chat(std::string(item.label) + " bought for " +
                         std::to_string(price) + " Zedcreds; " +
                         std::to_string(p.zc) + " in hand.", p.id);
