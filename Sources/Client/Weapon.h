@@ -60,6 +60,11 @@ namespace spades {
 			// the public SetTier below).
 			int tier;
 
+			// Tower Defense never runs out of rounds: the server tops the
+			// reserve back up behind every answer, so its count never
+			// falls (see the public SetUnlimited below).
+			bool unlimited;
+
 			void StartReloadAnimation();
 			bool NeedsAnotherShell();
 			void UpdateLocalReload();
@@ -112,6 +117,10 @@ namespace spades {
 			// WeaponTiers.h. The client sets it from the store's word.
 			void SetTier(int t) { tier = t; }
 			int GetTier() const { return tier; }
+
+			// Tower Defense's never-empty reserve: a reload answer is
+			// read by the clip it grew, not by the reserve it dipped.
+			void SetUnlimited(bool v) { unlimited = v; }
 
 			// for local player
 			/** Applies a WeaponReload from the server: a shell or a magazine loaded, or, when

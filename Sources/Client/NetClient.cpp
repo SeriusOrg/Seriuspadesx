@@ -1372,7 +1372,10 @@ namespace spades {
 						} else {
 							GetWorld()->CreateBlock(pos, p->GetBlockColor());
 							if (!GetWorld()->GetMap()->IsSolidWrapped(pos.x, pos.y, pos.z)) {
-								p->UseBlocks(1);
+								// The Tower Defense range spends no block on a
+								// placement: the count stands at fifty.
+								if (!client->GetStoreState().received)
+									p->UseBlocks(1);
 								if (p->IsLocalPlayer())
 									client->RegisterPlacedBlocks(1);
 							}
@@ -1414,7 +1417,10 @@ namespace spades {
 
 					if (p) {
 						int blocks = static_cast<int>(cells.size());
-						p->UseBlocks(blocks);
+						// A line of blocks spends none on the Tower Defense
+						// range either.
+						if (!client->GetStoreState().received)
+							p->UseBlocks(blocks);
 						if (p->IsLocalPlayer())
 							client->RegisterPlacedBlocks(blocks);
 						client->PlayerCreatedBlock(*p);

@@ -216,6 +216,9 @@ namespace spades {
 			void Restock();
 			void GotBlock() { blockStocks = std::min(blockStocks + 1, 50); }
 			void UseBlocks(int c) { blockStocks = std::max(blockStocks - c, 0); }
+			// The Tower Defense range stands its builders in a standing
+			// fifty: the store's first word tops the local count back up.
+			void RefillBlocks() { blockStocks = std::max(blockStocks, 50); }
 
 			bool IsToolSpade() { return tool == ToolSpade; }
 			bool IsToolBlock() { return tool == ToolBlock; }

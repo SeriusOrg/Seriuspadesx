@@ -1826,15 +1826,23 @@ namespace spades {
 		// fight with, read from the tiers table the server pays its
 		// damage out of too. The gun's tier rides the weapon object,
 		// which a respawn makes anew; the spade's scales ride the player.
+		// A world the store stood in is the Tower Defense range, where
+		// nothing runs out: the gun's reserve never falls and no block
+		// is spent on a placement, so both are read as standing full.
 		void Client::ApplyWeaponTiers() {
 			if (!world)
 				return;
 			stmp::optional<Player&> p = world->GetLocalPlayer();
 			if (!p)
 				return;
+			const bool td = GetStoreState().received;
 			const int gun = static_cast<int>(p->GetWeaponType());
-			if (gun >= 0 && gun <= 2)
+			if (gun >= 0 && gun <= 2) {
 				p->GetWeapon().SetTier(WeaponGameTierFor(gun));
+				p->GetWeapon().SetUnlimited(td);
+			}
+			if (td)
+				p->RefillBlocks();
 			const training::tiers::SpadeSpec& sp =
 				training::tiers::kSpade[WeaponGameTierFor(3)];
 			p->SetSpadeScales(sp.range, sp.chip);

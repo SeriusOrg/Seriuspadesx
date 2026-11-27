@@ -6582,11 +6582,17 @@ struct Server::Impl {
             if (!pp) continue;
             Player& p = *pp;
             if (p.gun.update(world_time)) {
+                // Tower Defense never runs out of rounds: the reserve is
+                // topped back up behind every answer, so the count the
+                // packet carries never falls. The count is a byte on the
+                // wire, so a reserve past 255 is said as 255.
+                if (tower_defense_mode()) p.gun.restock();
+                const int reserve = std::min(255, std::max(0, p.gun.stock));
                 ByteWriter bw;
                 bw.write_u8(static_cast<uint8_t>(PacketId::WeaponReload));
                 bw.write_u8(static_cast<uint8_t>(p.id));
                 bw.write_u8(static_cast<uint8_t>(std::max(0, p.gun.ammo)));
-                bw.write_u8(static_cast<uint8_t>(std::max(0, p.gun.stock)));
+                bw.write_u8(static_cast<uint8_t>(reserve));
                 send(p, bw);
             }
             if (!p.alive) {
@@ -7444,10 +7450,13 @@ struct Server::Impl {
             return std::fabs(pos.x - x) < d && std::fabs(pos.y - y) < d && std::fabs(pos.z - z) < d;
         };
         if (value == kBuildBlock) {
-            p.blocks -= 1;
+            // Tower Defense spends no block: the range stands its
+            // builders in a standing fifty, refilled without a word.
+            p.blocks -= tower_defense_mode() ? 0 : 1;
             if (p.blocks < -kBuildTolerance || !within(kMaxBlockDistance)) return;
             if (horde && !horde->can_build(x, y, z)) {
-                p.blocks += 1;   // a refusal spends no block
+                // a refusal spends no block
+                p.blocks += tower_defense_mode() ? 0 : 1;
                 system_chat("That block would seal the last way in.", p.id);
                 return;
             }
@@ -7506,7 +7515,8 @@ struct Server::Impl {
             built.push_back(c);
         }
         touched(built, true);
-        p.blocks -= static_cast<int>(pts.size());
+        // A line of blocks spends none on the Tower Defense range either.
+        p.blocks -= tower_defense_mode() ? 0 : static_cast<int>(pts.size());
         ByteWriter bw;
         bw.write_u8(static_cast<uint8_t>(PacketId::BlockLine));
         bw.write_u8(static_cast<uint8_t>(p.id));

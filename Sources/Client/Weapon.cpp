@@ -43,7 +43,8 @@ namespace spades {
 		      unconfirmedShells(0),
 		      lastReloadActivityTime(0.0F),
 		      lastDryFire(false),
-		      tier(0) {
+		      tier(0),
+		      unlimited(false) {
 			SPADES_MARK_FUNCTION();
 		}
 
@@ -192,7 +193,11 @@ namespace spades {
 
 			lastReloadActivityTime = time;
 
-			int loaded = this->stock - stock;
+			// A never-empty reserve is topped back up behind every answer,
+			// so the difference between two of its counts says nothing:
+			// the rounds loaded are the clip the answer grew by.
+			const int loaded =
+			    unlimited ? std::max(0, ammo - this->ammo) : this->stock - stock;
 			Restock(ammo, stock);
 
 			if (loaded <= 0) {
