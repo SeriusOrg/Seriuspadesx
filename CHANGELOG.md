@@ -5,6 +5,21 @@ version's section at the top of its release notes, under "What's new", and
 the game shows those lines when it offers the update. Keep each line short:
 one change, in a player's words.
 
+## 0.3.9
+
+- New: the Boomer wears its own skin - a dark orange bladder whose
+  skull pulses quicker as its fuse burns down
+- New: a second before the Spitter spits, green drops burst off its
+  head, and its spitball trails green as it flies
+- New: close to a living player the Boomer chases them instead of
+  marching on the core
+- Improved: every Leaper walks its own chase - a flight to its perch,
+  a coil, and a pounce that homes in the air
+- Improved: a hunt that loses its player hands its hunter to the road
+  to the core, and the chase comes back when the field reads again
+- Fixed: acid pools melt no deeper than the bedrock - the floor of the
+  world stays whole
+
 ## 0.3.8
 
 - New: the horde plays the map you pick - a button under Tower Defense
