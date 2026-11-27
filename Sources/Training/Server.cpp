@@ -6279,6 +6279,12 @@ struct Server::Impl {
                     if (!VoxelMap::valid(cx, cy, cz) ||
                         !map.solid(cx, cy, cz))
                         continue;
+                    // The floor of the world holds against the acid
+                    // as it holds against the people: the bedrock and
+                    // the water under it are never rebuilt, so the
+                    // pool paints and melts no deeper than the lowest
+                    // layer an edit may touch.
+                    if (cz >= 62) continue;
                     if (core_column_cell(cx, cy, cz)) continue;
                     pool.push_back(Cell{cx, cy, cz});
                 }
@@ -6352,6 +6358,10 @@ struct Server::Impl {
             if (!VoxelMap::valid(m.x, m.y, m.z) ||
                 !map.solid(m.x, m.y, m.z))
                 continue;
+            // The booking refuses the floor of the world, and the
+            // bite keeps the same word: a melt that reads the bedrock
+            // or the water under it holds its crumble.
+            if (m.z >= 62) continue;
             if (core_column_cell(m.x, m.y, m.z)) continue;
             ByteWriter bw;
             bw.write_u8(static_cast<uint8_t>(PacketId::BlockAction));
