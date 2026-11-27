@@ -837,7 +837,7 @@ namespace spades {
 			auto maybePlayer = world->GetLocalPlayer();
 			if (!maybePlayer || !maybePlayer->IsAlive())
 				return false;
-			const Player& lp = maybePlayer.value();
+			Player& lp = maybePlayer.value();
 			const Vector3 eye = lp.GetEye();
 			const Vector3 front = lp.GetFront();
 			const float dx = core.x - eye.x;
