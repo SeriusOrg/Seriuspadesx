@@ -514,7 +514,15 @@ namespace spades {
 		}
 	}
 
+	// The class the store's word picked: the tier's own dress
+	// skin when one is worn (the mod's whole View skin, its models
+	// and their transforms together), the stock gun's otherwise.
 	IWeaponSkin@ CreateViewSMGSkin(Renderer@ r, AudioDevice@ dev) {
+		switch(WeaponDressTier(1)) {
+		case 1: return ViewSMGAKSkin(r, dev);
+		case 2: return ViewSMGM4Skin(r, dev);
+		case 3: return ViewMinigunSkin(r, dev);
+		}
 		return ViewSMGSkin(r, dev);
 	}
 }

@@ -89,6 +89,14 @@ namespace spades {
 		return PakFileExists(dress + path);
 	}
 
+	// The tier a gun's dress fights at, for the skin factories that
+	// pick a view class by it: zero when no dress is worn.
+	static int DressTier(int gun) {
+		if (gun < 0 || gun > 4)
+			return 0;
+		return g_dress_tier[gun];
+	}
+
 	// The charm the gun's dress tier wears: the tier's own when a
 	// dress is worn, `stock` when it is not. Tier one rides with the
 	// bullet, two with the skull, three with the creep.
@@ -121,6 +129,10 @@ namespace spades {
 					r = eng->RegisterGlobalFunction(
 					  "string WeaponDressPath(int, const string& in)",
 					  asFUNCTION(DressPath), asCALL_CDECL);
+					manager->CheckError(r);
+					r = eng->RegisterGlobalFunction(
+						  "int WeaponDressTier(int)", asFUNCTION(DressTier),
+						  asCALL_CDECL);
 					manager->CheckError(r);
 					r = eng->RegisterGlobalFunction(
 						  "bool WeaponDressShips(int, const string& in)",

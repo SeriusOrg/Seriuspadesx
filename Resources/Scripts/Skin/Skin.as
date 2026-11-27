@@ -19,6 +19,20 @@
  */
  
 #include "BasicViewWeapon.as"
+// The Tower Defense dresses' own view skins, one class a dress: the
+// factories in the stock View.as files pick the class by the tier the
+// store's word says, and each class spells the dress's pak folder in
+// front of every file it loads.
+#include "Rifle/M14.as"
+#include "Rifle/Ballista.as"
+#include "Rifle/SV99.as"
+#include "SMG/AK47.as"
+#include "SMG/M4Magpul.as"
+#include "SMG/M134.as"
+#include "Shotgun/SPAS12.as"
+#include "Shotgun/Remington.as"
+#include "Spade/BastardSword.as"
+#include "Spade/Lightsaber.as"
 #include "Spade/ThirdPerson.as"
 #include "Spade/View.as"
 #include "Block/ThirdPerson.as"

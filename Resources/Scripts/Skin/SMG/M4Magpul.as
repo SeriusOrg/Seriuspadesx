@@ -19,8 +19,13 @@
 
  */
 
+// Tower Defense dress: the mod's own view skin, adapted. The class
+// is picked by the store's word (the factory in this weapon's stock
+// View.as reads the tier); every file it loads is spelled with the
+// dress's pak folder in front.
+
 namespace spades {
-	class ViewSMGSkin : BasicViewWeapon {
+	class ViewSMGM4Skin : BasicViewWeapon {
 		private AudioDevice@ audioDevice;
 		private Model@ gunModel;
 		private Model@ chargingHandleModel;
@@ -46,41 +51,41 @@ namespace spades {
 		private double lastSprintState = 0;
 		private double lastRaiseState = 0;
 
-		ViewSMGSkin( Renderer@ r, AudioDevice@ dev ) {
+		ViewSMGM4Skin( Renderer@ r, AudioDevice@ dev ) {
 			super( r );
 			@audioDevice = dev;
 			@gunModel = renderer.RegisterModel
-				( "Models/Weapons/SMG/WeaponNoMagazine.kv6" );
+				( "WeaponMods/SMGLvl2/Models/Weapons/SMG/WeaponNoMagazine.kv6" );
 			@chargingHandleModel = renderer.RegisterModel
-				( "Models/Weapons/SMG/ChargingHandle.kv6" );
+				( "WeaponMods/SMGLvl2/Models/Weapons/SMG/ChargingHandle.kv6" );
 			@magazineEmptyModel = renderer.RegisterModel
-				( "Models/Weapons/SMG/MagazineEmpty.kv6" );
+				( "WeaponMods/SMGLvl2/Models/Weapons/SMG/MagazineEmpty.kv6" );
 			@magazineLoadedModel = renderer.RegisterModel
-				( "Models/Weapons/SMG/MagazineLoaded.kv6" );
+				( "WeaponMods/SMGLvl2/Models/Weapons/SMG/Magazine.kv6" );
 			@sightsFrontModel = renderer.RegisterModel
-				( "Models/Weapons/SMG/SightsFront.kv6" );
+				( "WeaponMods/SMGLvl2/Models/Weapons/SMG/SightsFront.kv6" );
 			@sightsPinModel = renderer.RegisterModel
-				( "Models/Weapons/SMG/SightsPin.kv6" );
+				( "WeaponMods/SMGLvl2/Models/Weapons/SMG/SightsPin.kv6" );
 			@sightsReflexModel = renderer.RegisterModel
-				( "Models/Weapons/SMG/SightsReflex.kv6" );
+				( "WeaponMods/SMGLvl2/Models/Weapons/SMG/SightsReflex.kv6" );
 
 			@fireSounds[0] = dev.RegisterSound
-				( "Sounds/Weapons/SMG/FireLocal1.opus" );
+				( "WeaponMods/SMGLvl2/Sounds/Weapons/SMG/V2Local1.opus" );
 			@fireSounds[1] = dev.RegisterSound
-				( "Sounds/Weapons/SMG/FireLocal2.opus" );
+				( "WeaponMods/SMGLvl2/Sounds/Weapons/SMG/V2Local2.opus" );
 			@fireSounds[2] = dev.RegisterSound
-				( "Sounds/Weapons/SMG/FireLocal3.opus" );
+				( "WeaponMods/SMGLvl2/Sounds/Weapons/SMG/V2Local3.opus" );
 			@fireSounds[3] = dev.RegisterSound
-				( "Sounds/Weapons/SMG/FireLocal4.opus" );
+				( "WeaponMods/SMGLvl2/Sounds/Weapons/SMG/V2Local4.opus" );
 			@fireFarSound = dev.RegisterSound
-				( "Sounds/Weapons/SMG/FireFar.opus" );
+				( "WeaponMods/SMGLvl2/Sounds/Weapons/SMG/FireFar.opus" );
 			@fireStereoSound = dev.RegisterSound
-				( "Sounds/Weapons/SMG/FireStereo.opus" );
+				( "WeaponMods/SMGLvl2/Sounds/Weapons/SMG/FireStereo.opus" );
 			@reloadSound = dev.RegisterSound
-				( "Sounds/Weapons/SMG/ReloadLocal.opus" );
+				( "WeaponMods/SMGLvl2/Sounds/Weapons/SMG/ReloadLocal.opus" );
 
 			@reflexImage = renderer.RegisterImage
-				( "Gfx/ReflexRound.png" );
+				( "WeaponMods/SMGLvl2/Gfx/ReflexRound.png" );
 
 			@scopeImage = renderer.RegisterImage("Gfx/SMG.png");
 
@@ -526,9 +531,6 @@ namespace spades {
 		}
 	}
 
-	IWeaponSkin@ CreateViewSMGSkin( Renderer@ r, AudioDevice@ dev ) {
-		return ViewSMGSkin( r, dev );
-	}
 }
 /*
 array<float> reloadTimeline = {0.f,

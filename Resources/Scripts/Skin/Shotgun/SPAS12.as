@@ -19,7 +19,7 @@
  */
  namespace spades 
  {
-	class ViewShotgunSkin: 
+	class ViewShotgunSPASSkin: 
 	IToolSkin, IViewToolSkin, IWeaponSkin,
 	BasicViewWeapon 
 	{
@@ -107,24 +107,24 @@
 			return (per*per*per + 1);
 		}
 		
-		ViewShotgunSkin(Renderer@ r, AudioDevice@ dev)
+		ViewShotgunSPASSkin(Renderer@ r, AudioDevice@ dev)
 		{
 			super(r);
 			@audioDevice = dev;
 			@gunModel = renderer.RegisterModel
-				("Models/Weapons/Shotgun/WeaponNoPump.kv6");
+				("WeaponMods/ShotgunLvl2/Models/Weapons/Shotgun/WeaponNoPump.kv6");
 
 			@pumpModel = renderer.RegisterModel
-				("Models/Weapons/Shotgun/Pump.kv6");
+				("WeaponMods/ShotgunLvl2/Models/Weapons/Shotgun/Pump.kv6");
 
 			@sightModel2 = renderer.RegisterModel
-				("Models/Weapons/Shotgun/Sight2.kv6");
+				("WeaponMods/ShotgunLvl2/Models/Weapons/Shotgun/Sight2.kv6");
 
 				
 			@fireSound = dev.RegisterSound
 				("Sounds/Weapons/Shotgun/Fire.opus");
 			@fireemptySound = dev.RegisterSound
-				("Sounds/Weapons/Shotgun/FireEmpty.opus");
+				("WeaponMods/ShotgunLvl2/Sounds/Weapons/Shotgun/FireEmpty.opus");
 			@reloadSound = dev.RegisterSound
 				("Sounds/Weapons/Shotgun/Reload.opus");
 			@cockSound = dev.RegisterSound
@@ -763,8 +763,4 @@
 		}
 	}
 	
-	IWeaponSkin@ CreateViewShotgunSkin(Renderer@ r, AudioDevice@ dev) 
-	{
-		return ViewShotgunSkin(r, dev);
-	}
 }

@@ -19,7 +19,7 @@
  */
 
  namespace spades {
-	class ViewRifleSkin : BasicViewWeapon {
+	class ViewRifleM14Skin : BasicViewWeapon {
 		private AudioDevice@ audioDevice;
 		private Model@ gunModel;
 		private Model@ magazineModel;
@@ -214,31 +214,31 @@
 			}
 		}
 
-		ViewRifleSkin(Renderer@ r, AudioDevice@ dev){
+		ViewRifleM14Skin(Renderer@ r, AudioDevice@ dev){
 			super(r);
 			@audioDevice = dev;
 			@gunModel = renderer.RegisterModel
-				("Models/Weapons/Rifle/WeaponNoMagazine.kv6");
+				("WeaponMods/RifleLvl1/Models/Weapons/Rifle/WeaponNoMagazine.kv6");
 			@magazineModel = renderer.RegisterModel
-				("Models/Weapons/Rifle/Magazine.kv6");
+				("WeaponMods/RifleLvl1/Models/Weapons/Rifle/Magazine.kv6");
 			@rearSightModel = renderer.RegisterModel
-				("Models/Weapons/Rifle/RearSight.kv6");
+				("WeaponMods/RifleLvl1/Models/Weapons/Rifle/RearSight.kv6");
 			@frontSightModel = renderer.RegisterModel
-				("Models/Weapons/Rifle/FrontSight.kv6");
+				("WeaponMods/RifleLvl1/Models/Weapons/Rifle/FrontSight.kv6");
 			@chargingHandleModel = renderer.RegisterModel
-				("Models/Weapons/Rifle/ChargingHandle.kv6");
+				("WeaponMods/RifleLvl1/Models/Weapons/Rifle/ChargingHandle.kv6");
 
 			@fireFarSound = dev.RegisterSound
-				("Sounds/Weapons/Rifle/FireFar.opus");
+				("WeaponMods/RifleLvl1/Sounds/Weapons/Rifle/FireFar.opus");
 			@fireStereoSound = dev.RegisterSound
-				("Sounds/Weapons/Rifle/FireStereo.opus");
+				("WeaponMods/RifleLvl1/Sounds/Weapons/Rifle/FireStereo.opus");
 			@reloadSound = dev.RegisterSound
-				("Sounds/Weapons/Rifle/ReloadLocal.opus");
+				("WeaponMods/RifleLvl1/Sounds/Weapons/Rifle/ReloadLocal.opus");
 
 			@fireSmallReverbSound = dev.RegisterSound
-				("Sounds/Weapons/Rifle/V2AmbienceSmall.opus");
+				("WeaponMods/RifleLvl1/Sounds/Weapons/Rifle/V2AmbienceSmall.opus");
 			@fireLargeReverbSound = dev.RegisterSound
-				("Sounds/Weapons/Rifle/V2AmbienceLarge.opus");
+				("WeaponMods/RifleLvl1/Sounds/Weapons/Rifle/V2AmbienceLarge.opus");
 
 			@scopeImage = renderer.RegisterImage("Gfx/Rifle.png");
 
@@ -521,7 +521,4 @@
 		}
 	}
 
-	IWeaponSkin@ CreateViewRifleSkin(Renderer@ r, AudioDevice@ dev) {
-		return ViewRifleSkin(r, dev);
-	}
 }

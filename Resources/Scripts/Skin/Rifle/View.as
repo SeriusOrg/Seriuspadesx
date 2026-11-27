@@ -502,7 +502,15 @@ namespace spades {
 		}
 	}
 
+	// The class the store's word picked: the tier's own dress
+	// skin when one is worn (the mod's whole View skin, its models
+	// and their transforms together), the stock gun's otherwise.
 	IWeaponSkin@ CreateViewRifleSkin(Renderer@ r, AudioDevice@ dev) {
+		switch(WeaponDressTier(0)) {
+		case 1: return ViewRifleM14Skin(r, dev);
+		case 2: return ViewRifleBallistaSkin(r, dev);
+		case 3: return ViewRifleSV99Skin(r, dev);
+		}
 		return ViewRifleSkin(r, dev);
 	}
 }

@@ -19,7 +19,7 @@
  */
 
  namespace spades {
-	class ViewSMGSkin : BasicViewWeapon {
+	class ViewSMGAKSkin : BasicViewWeapon {
 		private AudioDevice@ audioDevice;
 		private Model@ gunModel;
 		private Model@ magazineModel;
@@ -217,19 +217,19 @@
 			}
 		}
 
-		ViewSMGSkin(Renderer@ r, AudioDevice@ dev){
+		ViewSMGAKSkin(Renderer@ r, AudioDevice@ dev){
 			super(r);
 			@audioDevice = dev;
 			@gunModel = renderer.RegisterModel
-				("Models/Weapons/SMG/WeaponNoMagazine.kv6");
+				("WeaponMods/SMGLvl1/Models/Weapons/SMG/WeaponNoMagazine.kv6");
 			@magazineModel = renderer.RegisterModel
-				("Models/Weapons/SMG/Magazine.kv6");
+				("WeaponMods/SMGLvl1/Models/Weapons/SMG/Magazine.kv6");
 			@rearSightModel = renderer.RegisterModel
-				("Models/Weapons/SMG/Scope.kv6");
+				("WeaponMods/SMGLvl1/Models/Weapons/SMG/Scope.kv6");
 			@chargingHandleModel = renderer.RegisterModel
-				("Models/Weapons/SMG/ChargingHandle.kv6");
+				("WeaponMods/SMGLvl1/Models/Weapons/SMG/ChargingHandle.kv6");
 			@railsModel = renderer.RegisterModel
-				("Models/Weapons/SMG/Rails.kv6");
+				("WeaponMods/SMGLvl1/Models/Weapons/SMG/Rails.kv6");
 
 			@fireSmallReverbSounds[0] = dev.RegisterSound
 				("Sounds/Weapons/SMG/V2AmbienceSmall1.opus");
@@ -262,7 +262,7 @@
 			@fireStereoSound = dev.RegisterSound
 				("Sounds/Weapons/SMG/FireStereo.opus");
 			@reloadSound = dev.RegisterSound
-				("Sounds/Weapons/SMG/ReloadLocal.opus");
+				("WeaponMods/SMGLvl1/Sounds/Weapons/SMG/ReloadLocal.opus");
 
 			@scopeImage = renderer.RegisterImage("Gfx/SMG.png");
 
@@ -547,7 +547,4 @@
 		}
 	}
 
-	IWeaponSkin@ CreateViewSMGSkin(Renderer@ r, AudioDevice@ dev) {
-		return ViewSMGSkin(r, dev);
-	}
 }
