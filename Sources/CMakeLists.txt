@@ -51,7 +51,7 @@ if(USE_OPENXR)
 	set(JSON_FILES "")
 	set(JSON_INCLUDE "")
 endif()
-file(GLOB SCRIPTBINDING_FILES ScriptBindings/*.cpp ScriptBindings/*.h)
+file(GLOB SCRIPTBINDING_FILES CONFIGURE_DEPENDS ScriptBindings/*.cpp ScriptBindings/*.h)
 file(GLOB UNZIP_FILES unzip/*.c unzip/*.h)
 file(GLOB MONOCYPHER_FILES monocypher/*.c monocypher/*.h)
 
