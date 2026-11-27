@@ -702,6 +702,9 @@ namespace spades {
 			// is resolved once, here, and then stays put for as long as the menu is up.
 			/** Returns whether the menu opened. */
 			bool OpenPieMenu();
+			/** Raises the store page when the player stands by the core and
+			 * looks at it; returns whether it opened. */
+			bool OpenStoreNearCore();
 			/** Sends what a chosen slice sends. `targetPlayerId` is the player aimed
 			 * at when the menu opened, or `-1`. */
 			void CommitPieSlice(const PieSlice&, int targetPlayerId);

@@ -1,0 +1,32 @@
+# The store's own words: one line a card,
+# "sku | name | description | price".
+# The prices here must say the same as the [store] of
+# towerdefense.toml, for the wire carries none of them.
+# A line whose sku the catalogue does not know is passed over,
+# and what a line leaves out falls back to the catalogue's words.
+
+rifle | Rifle | Standard issue. Always yours. | 0
+smg | SMG | Fast and light. | 20
+shotgun | Shotgun | A close-range answer. | 30
+rifle_dmg1 | Rifle: heavy round | +1 damage band, rifle. | 25
+rifle_dmg2 | Rifle: heaviest | Another damage band. | 40
+smg_dmg1 | SMG: heavy round | +1 damage band, SMG. | 30
+smg_dmg2 | SMG: heaviest | Another damage band. | 45
+shotgun_dmg1 | Shotgun: buck shot | +1 damage band, shotgun. | 35
+shotgun_dmg2 | Shotgun: slug | Another damage band. | 50
+ammo | Ammo refill | Reserve back to full. | 5
+grenades | Grenade | One more to throw. | 6
+hp1 | Tough skin I | +25 max health. | 15
+hp2 | Tough skin II | +25 max health. | 25
+hp3 | Tough skin III | +25 max health. | 40
+speed1 | Light feet I | +10% move speed. | 20
+speed2 | Light feet II | +10% move speed. | 35
+health | Field dressing | Heal to full. | 8
+blocks | Block bundle | +10 building blocks. | 4
+repair | Patch the core | Restore 25 core health. | 12
+core_hp1 | Core plating I | +25 max core health. | 18
+core_hp2 | Core plating II | +25 max core health. | 30
+core_hp3 | Core plating III | +25 max core health. | 50
+turret1 | Sentry: SMG | A level 1 pillar. | 5
+turret2 | Sentry: MG | Raise to level 2. | 10
+turret3 | Sentry: Minigun | Raise to level 3. | 30

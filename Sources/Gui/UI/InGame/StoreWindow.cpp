@@ -23,6 +23,7 @@
 #include <Core/Exception.h>
 #include <Core/Bitmap.h>
 #include <Core/FileManager.h>
+#include <Core/Settings.h>
 #include <Core/Strings.h>
 #include <Core/VoxelModel.h>
 #include <Gui/SkinPreviewScene.h>
@@ -37,6 +38,8 @@
 #include <Training/StoreCatalog.h>
 
 #include <algorithm>
+#include <cstdlib>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -47,6 +50,10 @@
 #include <Client/IFont.h>
 #include <Client/IRenderer.h>
 #include <Client/NetClient.h>
+
+// The veil over a shelf's own art: how much of a tab's background image
+// shows over the plain panel behind it.
+DEFINE_SPADES_SETTING(cg_storeBgOpacity, "0.85");
 
 namespace spades {
 	namespace client {
@@ -60,16 +67,36 @@ namespace spades {
 		namespace {
 			constexpr float kCardGap = 8.0F;
 
-			// The text block under a card's picture: the air under the price, the
-			// air between two lines, and the air between the picture and the name.
-			// The lines themselves are measured from the font as they are drawn, so
-			// the stack is placed from the bottom of the card upwards and a long
-			// name or a long price can never hang off the card or push into the
-			// picture - which is what the old fixed offsets did.
+			// A card is a row: the air inside its edges, and the breath between
+			// the lines of its words.
 			constexpr float kCardPad = 9.0F;
 			constexpr float kLineGap = 3.0F;
-			constexpr float kThumbGap = 6.0F;
-			constexpr float kThumbTop = 8.0F;   // air above the picture
+
+			// The placeholder every card without a model of its own wears: the
+			// breadcrumb, the trail marker every player already knows.
+			constexpr const char* kPlaceholderModel =
+			  "Models/Effects/Trail/Breadcrumb.kv6";
+
+			// One shelf art a tab, from the Tower Defense pak's own Gfx/BG. A
+			// missing image leaves the plain dark panel standing, so the page
+			// works before its art is drawn.
+			constexpr const char*
+			  kTabBackgrounds[training::store::kCategoryCount] = {
+			    "Gfx/BG/Weapons.png",
+			    "Gfx/BG/Perks.png",
+			    "Gfx/BG/Core.png",
+			  };
+
+			// The shelves left to right, and their captions.
+			constexpr int kTabOrder[3] = {1, 0, 2};  // Perks, Weapons, Core
+			constexpr const char* kTabNames[3] = {"Perks", "Weapons", "Core"};
+
+			std::string Trimmed(std::string word) {
+				const size_t a = word.find_first_not_of(" \t\r\n");
+				if (a == std::string::npos)
+					return "";
+				return word.substr(a, word.find_last_not_of(" \t\r\n") - a + 1);
+			}
 
 			/** The pause menu's palette, so a card reads as one of its buttons. */
 			Vector4 CardColour(bool hover, bool pressed, bool owned, bool poor) {
@@ -92,11 +119,11 @@ namespace spades {
 				const training::store::Item* item;
 				std::uint8_t level = 0;
 				int price = 0;
+				int price_override = -1;  // the pak's own word, when it says one
 				std::uint16_t purse = 0;
 
 				std::unique_ptr<VoxelModelPreview> preview;
 				Handle<IImage> image;
-				Handle<IImage> sprite;
 				bool loaded = false;
 				// A picture that could not be drawn is not given up on: it is
 				// asked for again, a few times, and only then left to the drawn
@@ -116,40 +143,33 @@ namespace spades {
 				void Load() {
 					loaded = true;
 					animationStart = GetManager().time;
-					// The sprite is registered whether there is a model or not: a card with
-					// no model used to return here and never ask for its sprite at all, so
-					// the ammo card showed nothing.
-					if (item->icon != nullptr) {
-						try {
-							sprite = GetManager().GetRenderer().RegisterImage(item->icon);
-						} catch (const std::exception&) {
-							sprite = {};
-						}
-					}
-					if (item->model == nullptr)
-						return;
+					// Every card wears a voxel model: its own when it has one, the
+					// breadcrumb placeholder when it has not, so a shelf reads as one
+					// set of things rather than a mix of drawn marks and pictures.
+					const char* model_path =
+						item->model != nullptr ? item->model : kPlaceholderModel;
 					try {
-						auto stream = FileManager::OpenForReading(item->model);
+						auto stream = FileManager::OpenForReading(model_path);
 						if (!stream) {
 							// Said loudly: a card whose picture cannot be read is a blank
 							// card, and the log is the only place the reason can be read
 							// afterwards.
 							SPLog("Store: no file for %s's thumbnail (%s)", item->sku,
-							      item->model);
+							      model_path);
 							return;
 						}
 						auto model = VoxelModel::LoadKV6(*stream);
 						stream.reset();
 						if (!model) {
-							SPLog("Store: %s's thumbnail is not a voxel model (%s)", item->sku,
-							      item->model);
+							SPLog("Store: %s\'s thumbnail is not a voxel model (%s)",
+								      item->sku, model_path);
 							preview.reset();
 							return;
 						}
 						preview = std::make_unique<VoxelModelPreview>(*model);
 						if (preview->IsEmpty()) {
 							SPLog("Store: %s's thumbnail has no surfaces (%s)", item->sku,
-							      item->model);
+							      model_path);
 							preview.reset();
 						}
 					} catch (const std::exception& e) {
@@ -157,7 +177,7 @@ namespace spades {
 						// must be said which one, or a blank card is a mystery: a bad
 						// model, a bad transform, a surface too big to mesh.
 						SPLog("Store: %s's thumbnail could not be built (%s): %s", item->sku,
-						      item->model, e.what());
+						      model_path, e.what());
 						preview.reset();
 					}
 				}
@@ -167,7 +187,9 @@ namespace spades {
 					    bounds.GetHeight() <= 0)
 						return;
 					const float elapsed = std::max(0.0F, GetManager().time - animationStart);
-					const int frame = int(elapsed * 24.0F);
+					// The shelf stands still: a model turns only while the mouse rests
+					// on its card, and goes back to its standing pose when it leaves.
+					const int frame = hover ? int(elapsed * 24.0F) : -1;
 					const float density =
 					  std::min({std::max(1.0F, r.ScreenPixelRatio()), 2.0F,
 					            512.0F / bounds.GetWidth(), 512.0F / bounds.GetHeight()});
@@ -177,8 +199,10 @@ namespace spades {
 						const bool resized =
 						  !image || int(image->GetWidth()) != w || int(image->GetHeight()) != h;
 						if (resized || renderedFrame != frame) {
+							const float turn = float(frame) * (0.4F / 24.0F);
 							const float yaw =
-							  std::fmod(initialYaw + float(frame) * (0.4F / 24), 6.283185F);
+							  frame >= 0 ? std::fmod(initialYaw + turn, 6.283185F)
+							              : initialYaw;
 							auto pixels = preview->Rasterize(w, h, yaw);
 							auto bitmap = Handle<Bitmap>::New(pixels.data(), w, h);
 							if (resized)
@@ -356,10 +380,25 @@ namespace spades {
 			}
 
 			public:
-				StoreCard(UIManager* manager, const training::store::Item* item, int index)
+				StoreCard(UIManager* manager, const training::store::Item* item,
+				          int index, const std::map<std::string, StoreText>* texts)
 				    : ButtonBase(manager), item(item) {
 					caption = item->label;
 					detail = item->detail;
+					// The store's own words, when the pak says them: the name, the
+					// description and the price the card is shown at, one line of
+					// Store/items.txt a card. What the file does not say falls
+					// back to the catalogue's own words.
+					if (texts != nullptr) {
+						const auto it = texts->find(item->sku);
+						if (it != texts->end()) {
+							if (!it->second.name.empty())
+								caption = it->second.name;
+							if (!it->second.detail.empty())
+								detail = it->second.detail;
+							price_override = it->second.price;
+						}
+					}
 					// Every card that has no model of its own wears a mark of its
 					// own: a shield for tough skin, a boot for light feet, and so on,
 					// each gaining a ridge, a line or a plate for the tier it is. A
@@ -390,9 +429,13 @@ namespace spades {
 					level = lv;
 					price = pr;
 					purse = purse_;
-					const std::string total = std::to_string(price);
+					// The pak's own price comes first, the catalogue's is the
+					// fallback: the wire carries none of them, so the card says
+					// what the shipped words say.
+					const int shown = price_override >= 0 ? price_override : price;
+					const std::string total = std::to_string(shown);
 					const std::string coin = training::store::kCurrencyPlural;
-					priceText = price > 0 ? total + " " + coin : "Free";
+					priceText = shown > 0 ? total + " " + coin : "Free";
 				}
 
 				int GetItemIndex() const {
@@ -405,8 +448,8 @@ namespace spades {
 					auto& r = GetManager().GetRenderer();
 					const auto p = GetScreenPosition();
 					const bool maxed =
-					  level > 0 && item->max_level != 255 &&
-					  level >= item->max_level;
+						  level > 0 && item->max_level != 255 &&
+						  level >= item->max_level;
 					const bool owned = maxed;
 					const bool poor = !owned && price > 0 && purse < price;
 					const auto colour = CardColour(hover, pressed && hover, owned, poor);
@@ -418,83 +461,76 @@ namespace spades {
 					if (!loaded)
 						Load();
 
-					// The three lines are measured before anything is drawn, and the
-					// stack is placed from the bottom of the card upwards: the picture
-					// above it is then given exactly the room that is left, so a long
-					// name or a long price can neither hang off the card nor push into
-					// the picture.  The old fixed offsets did both.
-					auto* font = GetFont();
-					std::string name, det, priceLine;
-					float nameH = 0.0F, detH = 0.0F, priceH = 0.0F;
-					if (font != nullptr) {
-						name = gui::ui::ElideText(*font, caption, size.x - 16.0F);
-						det = gui::ui::ElideText(*font, detail, size.x - 16.0F, 0.8F);
-						priceLine = owned ? (maxed ? "Owned" : "Bought") : priceText;
-						nameH = font->Measure(name).y;
-						detH = font->Measure(det).y * 0.8F;
-						priceH = font->Measure(priceLine).y;
-					}
-					const float priceY = p.y + size.y - kCardPad - priceH;
-					const float detY = priceY - kLineGap - detH;
-					const float nameY = detY - kLineGap - nameH;
-					const float thumbBottom = (font != nullptr ? nameY : priceY) - kThumbGap;
-					const float thumbHeight = thumbBottom - (p.y + kThumbTop);
-
-					if (thumbHeight > 1.0F) {
-						const AABB2 area(p.x + 10.0F, p.y + kThumbTop, size.x - 20.0F,
-						                 thumbHeight);
-						const Vector2 centre = (area.min + area.max) * 0.5F;
-						const float mark =
-						  std::min({area.GetWidth(), area.GetHeight()});
-						if (preview) {
-							DrawModel(r, area);
-						} else if (iconKind != IconKind::None) {
-							// The card's own mark, drawn at the size of the picture it
-							// stands in for.
-							const float s = mark * 0.78F;
-							DrawStoreIcon(r, centre - MakeVector2(s, s) * 0.5F, s,
-							              iconKind, iconTier);
-						} else if (sprite) {
-							// A Hotbar sprite, kept to the card's own shape.
-							const float sx =
-							  std::min(area.GetWidth() / 40.0F, area.GetHeight() / 40.0F);
-							const float half = 20.0F * sx;
-							const AABB2 at(centre.x - half, centre.y - half, half * 2.0F,
-							               half * 2.0F);
-							SetColorNP(r, MakeVector4(1, 1, 1, 1));
-							r.DrawImage(sprite, at);
-						} else if (item->effect == training::store::kEffectTurret) {
-							// A sentry with no picture: its gun on a pillar.
-							DrawTurretGlyph(r, centre, mark * 0.85F);
-						} else {
-							// Nothing at all to draw: a block, so the card still shows
-							// something rather than a blank grey box.
-							const float s = mark * 0.78F;
-							DrawStoreIcon(r, centre - MakeVector2(s, s) * 0.5F, s,
+					// The picture stands on the left in its own square frame, and the
+					// words sit beside it: the name, the description under it, and the
+					// price at the bottom of the words, pushed to their right edge, so
+					// it reads as a thing of its own.
+					const float side = std::max(1.0F, size.y - kCardPad * 2.0F);
+					const AABB2 frame(p.x + kCardPad, p.y + kCardPad, side, side);
+					SetColorNP(r, MakeVector4(0, 0, 0, colour.w * 0.8F));
+					r.DrawOutlinedRect(frame.min.x, frame.min.y, frame.max.x, frame.max.y);
+					const AABB2 area(frame.min.x + 2.0F, frame.min.y + 2.0F, side - 4.0F,
+						                 side - 4.0F);
+					const Vector2 centre = (area.min + area.max) * 0.5F;
+					const float mark = std::min(area.GetWidth(), area.GetHeight());
+					if (preview) {
+						DrawModel(r, area);
+					} else if (iconKind != IconKind::None) {
+						// The card's own mark, drawn at the size of the picture it
+						// stands in for.
+						const float s = mark * 0.78F;
+						DrawStoreIcon(r, centre - MakeVector2(s, s) * 0.5F, s, iconKind,
+							              iconTier);
+					} else if (item->effect == training::store::kEffectTurret) {
+						// A sentry with no picture: its gun on a pillar.
+						DrawTurretGlyph(r, centre, mark * 0.85F);
+					} else {
+						// Nothing at all to draw: a block, so the card still shows
+						// something rather than a blank grey box.
+						const float s = mark * 0.78F;
+						DrawStoreIcon(r, centre - MakeVector2(s, s) * 0.5F, s,
 							              IconKind::Block, 0);
-						}
 					}
 
-					if (font != nullptr) {
-						const auto nm = font->Measure(name);
-						font->DrawShadow(name,
-						                 p + MakeVector2((size.x - nm.x) * 0.5F, nameY - p.y),
-						                 1.0F, MakeVector4(1, 1, 1, 1),
-						                 MakeVector4(0, 0, 0, 0.4F));
-						const auto dm = font->Measure(det) * 0.8F;
-						font->DrawShadow(det,
-						                 p + MakeVector2((size.x - dm.x) * 0.5F, detY - p.y),
-						                 0.8F, MakeVector4(0.8F, 0.8F, 0.8F, 1),
-						                 MakeVector4(0, 0, 0, 0.4F));
-						const auto pm = font->Measure(priceLine);
-						font->DrawShadow(priceLine,
-						                 p + MakeVector2((size.x - pm.x) * 0.5F, priceY - p.y),
-						                 1.0F,
-						                 MakeVector4(owned ? 0.55F : (poor ? 1.0F : 0.75F),
-						                              owned ? 0.95F : (poor ? 0.45F : 0.95F),
-						                              owned ? 0.55F : (poor ? 0.45F : 0.35F), 1),
-						                 MakeVector4(0, 0, 0, 0.4F));
+					auto* font = GetFont();
+					if (font == nullptr)
+						return;
+					const float tx = frame.max.x + 10.0F;
+					const float tw = (p.x + size.x - kCardPad) - tx;
+					if (tw < 24.0F)
+						return;
+					const std::string name = gui::ui::ElideText(*font, caption, tw);
+					const std::string det =
+						  gui::ui::ElideText(*font, detail, tw / 0.8F, 0.8F);
+					const std::string priceLine =
+						  owned ? (maxed ? "Owned" : "Bought") : priceText;
+
+					// The words from the top of their block: the name, then the
+					// description under it with a breath of air between the lines.
+					const float nameH = font->Measure(name).y;
+					const float detH = font->Measure(det).y * 0.8F;
+					const float priceH = font->Measure(priceLine).y;
+					float y = p.y + kCardPad + 2.0F;
+					font->DrawShadow(name, MakeVector2(tx, y), 1.0F,
+						                 MakeVector4(1, 1, 1, 1), MakeVector4(0, 0, 0, 0.4F));
+					y += nameH + kLineGap;
+					if (y + detH + kLineGap + priceH < p.y + size.y - kCardPad) {
+						font->DrawShadow(det, MakeVector2(tx, y), 0.8F,
+							                 MakeVector4(0.8F, 0.8F, 0.8F, 1),
+							                 MakeVector4(0, 0, 0, 0.4F));
 					}
+					// The price, apart from the words in its place as in its colour:
+					// what a purse can reach, what it cannot, what it already owns.
+					const auto pm = font->Measure(priceLine);
+					const float priceY = p.y + size.y - kCardPad - priceH;
+					const Vector4 priceCol =
+					  owned ? MakeVector4(0.55F, 0.95F, 0.55F, 1)
+					        : poor ? MakeVector4(1.0F, 0.45F, 0.45F, 1)
+					               : MakeVector4(0.75F, 0.95F, 0.35F, 1);
+					font->DrawShadow(priceLine,
+						                 MakeVector2(p.x + size.x - kCardPad - pm.x, priceY),
+						                 1.0F, priceCol,
+						                 MakeVector4(0, 0, 0, 0.4F));
 				}
 			};
 
@@ -518,6 +554,7 @@ namespace spades {
 				const training::store::Item* items;
 				int item_count;
 				int columns;
+				const std::map<std::string, StoreText>* texts;
 				std::vector<int> indices;
 				std::vector<Handle<UIElement>> rows;
 				std::function<void(int, UIElement&)> select;
@@ -525,10 +562,12 @@ namespace spades {
 			public:
 				StoreGridModel(UIManager* manager, const training::store::Item* items,
 				               int item_count, int columns,
+				               const std::map<std::string, StoreText>* texts,
 				               const std::vector<int>& indices,
 				               std::function<void(int, UIElement&)> select)
 				    : manager(manager), items(items), item_count(item_count),
-				      columns(columns), indices(indices), select(std::move(select)) {
+				      columns(columns), texts(texts), indices(indices),
+				      select(std::move(select)) {
 					rows.resize((indices.size() + columns - 1) / columns);
 				}
 
@@ -540,7 +579,8 @@ namespace spades {
 						const int end = std::min(static_cast<int>(indices.size()),
 						                         (row + 1) * columns);
 						for (int i = row * columns; i < end; ++i) {
-							auto card = Handle<StoreCard>::New(manager, &items[indices[i]], i);
+							auto card =
+								  Handle<StoreCard>::New(manager, &items[indices[i]], i, texts);
 							card->activated = [this, index = indices[i]](UIElement& s) {
 								select(index, s);
 							};
@@ -554,27 +594,21 @@ namespace spades {
 		} // namespace
 
 		StoreWindow::StoreWindow(UIElement* owner, ClientUI* ui)
-		    : UIElement(&owner->GetManager()), ui(ui), owner(owner) {
+		    : UIElement(owner != nullptr ? &owner->GetManager()
+		                                 : &ui->GetUIManager()),
+		      ui(ui), owner(owner) {
 			UIManager* manager = &GetManager();
 			SetFont(manager->GetRootElement().GetFont());
 			SetBounds(manager->GetRootElement().GetBounds());
 			isMouseInteractive = true;
 
 			const float w = std::min(manager->screenWidth - 32.0F, 1000.0F);
-			const float h = std::min(manager->screenHeight - 48.0F, 640.0F);
+			const float h = std::min(manager->screenHeight - 48.0F, 620.0F);
 			const AABB2 contents((manager->screenWidth - w) * 0.5F,
 			                     (manager->screenHeight - h) * 0.5F, w, h);
-			// The heading band: the title, the purse line under it, and then the
-			// shelves.  The line used to sit at +40 while the shelves started at
-			// +48, so the cards painted over the bottom of the words.
-			constexpr float kHeading = 60.0F;
-			const AABB2 sidebar(contents.min.x + 12, contents.min.y + kHeading,
-			                    Clamp(w * 0.18F, 96.0F, 164.0F), h - kHeading - 60.0F);
-			const float gridX = sidebar.max.x + 12;
-
 			{
-				// The title, centred over the whole window rather than hugged to the
-				// left edge: the shelves sit under either half of it.
+				// The title, centred over the whole window rather than hugged to
+				// the left edge: the shelves sit under either half of it.
 				auto title = Handle<gui::ui::Label>::New(manager);
 				title->text = _Tr("Client", "Store");
 				title->SetFont(&ui->GetFontManager().GetHeadingFont());
@@ -597,32 +631,41 @@ namespace spades {
 				AddChild(status_label.GetPointerOrNull());
 			}
 
-			const float step =
-			  std::min(32.0F, (sidebar.GetHeight() - 16) /
-			              float(training::store::kCategoryCount));
-			for (int cat = 0; cat < training::store::kCategoryCount; ++cat) {
+			// The three tabs across the top: Perks, Weapons, Core. The shelf
+			// under them follows the one that is pressed, and the first tab
+			// stands open when the page is raised.
+			const float tabY = contents.min.y + 64.0F;
+			const float tabW = (w - 24.0F) / 3.0F;
+			for (int i = 0; i < 3; ++i) {
+				const int cat = kTabOrder[i];
 				auto button = Handle<gui::ui::Button>::New(manager);
-				button->caption =
-				  _Tr("Client", training::store::category_name(static_cast<uint8_t>(cat)));
+				button->caption = _Tr("Client", kTabNames[i]);
 				button->hotKeyText = "";
-				button->SetBounds(AABB2(sidebar.min.x,
-				                        sidebar.min.y + float(cat) * step + 8.0F,
-				                        sidebar.GetWidth(), step - 2));
+				button->SetBounds(
+					AABB2(contents.min.x + 12.0F + float(i) * tabW, tabY,
+					       tabW - 4.0F, 26.0F));
 				button->activated = [this, cat](UIElement&) { ShowCategory(cat); };
-				if (cat == 0) gun_button = button;
-				else if (cat == 1) perk_button = button;
-				else core_button = button;
+				if (cat == 0)
+					gun_button = button;
+				else if (cat == 1)
+					perk_button = button;
+				else
+					core_button = button;
 				AddChild(button.GetPointerOrNull());
 			}
 			{
+				// The shelf under the tabs: rows of cards, as many rows as the
+				// page holds and as many columns as a row's cards are wide.
 				auto view = Handle<gui::ui::ListViewBase>::New(manager);
 				grid = view.GetPointerOrNull();
+				const float gridY = tabY + 38.0F;
+				const float gridH = contents.max.y - 56.0F - gridY;
 				grid->SetBounds(
-				  AABB2(gridX, sidebar.min.y, contents.max.x - gridX - 12,
-				          sidebar.GetHeight()));
-				const int visibleRows = Clamp(int(sidebar.GetHeight() / 150.0F), 1, 3);
-				grid->rowHeight = std::floor(sidebar.GetHeight() / float(visibleRows));
-				columns = Clamp(static_cast<int>(grid->GetItemWidth() / 190.0F), 1, 3);
+					AABB2(contents.min.x + 12.0F, gridY, w - 24.0F, gridH));
+				const int visibleRows = Clamp(int(gridH / 108.0F), 1, 4);
+				grid->rowHeight = std::floor(gridH / float(visibleRows));
+				columns =
+					Clamp(static_cast<int>(grid->GetItemWidth() / 330.0F), 1, 3);
 				AddChild(grid.GetPointerOrNull());
 			}
 			{
@@ -630,11 +673,12 @@ namespace spades {
 				button->caption = _Tr("Client", "Back");
 				button->hotKeyText = _Tr("Client", "[Esc]");
 				button->SetBounds(AABB2(contents.max.x - 132,
-				                        contents.max.y - 44, 116, 30));
+					                        contents.max.y - 44, 116, 30));
 				button->activated = [this](UIElement&) { Close(); };
 				AddChild(button.GetPointerOrNull());
 			}
-			ShowCategory(0);
+			LoadTexts();
+			ShowCategory(kTabOrder[0]);
 		}
 
 		void StoreWindow::Run() {
@@ -654,6 +698,62 @@ namespace spades {
 				Close();
 			else
 				UIElement::HotKey(key);
+		}
+
+		void StoreWindow::LoadTexts() {
+			if (texts_read)
+				return;
+			texts_read = true;
+			// The store's own words from the Tower Defense pak: one line a
+			// card, "sku | name | description | price". A line whose sku the
+			// catalogue does not know is passed over; a file that cannot be
+			// read at all is not an error, for the catalogue's words stand.
+			std::string bytes;
+			try {
+				auto stream = FileManager::OpenForReading("Store/items.txt");
+				if (stream)
+					bytes = stream->ReadAllBytes();
+			} catch (const std::exception&) {
+				return;
+			}
+			size_t lineStart = 0;
+			while (lineStart < bytes.size()) {
+				const size_t lineEnd = bytes.find('\n', lineStart);
+				const std::string line =
+					bytes.substr(lineStart,
+						lineEnd == std::string::npos
+							? std::string::npos
+							: lineEnd - lineStart);
+				lineStart =
+					lineEnd == std::string::npos ? bytes.size() : lineEnd + 1;
+				const std::string trimmed = Trimmed(line);
+				if (trimmed.empty() || trimmed[0] == '#')
+					continue;
+				std::vector<std::string> fields;
+				size_t fieldStart = 0;
+				while (fields.size() < 4) {
+					const size_t bar = trimmed.find('|', fieldStart);
+					if (bar == std::string::npos || fields.size() == 3) {
+						fields.push_back(Trimmed(trimmed.substr(fieldStart)));
+						break;
+					}
+					fields.push_back(
+						Trimmed(trimmed.substr(fieldStart, bar - fieldStart)));
+					fieldStart = bar + 1;
+				}
+				if (fields.size() < 2)
+					continue;
+				// Only a card the catalogue knows can carry words.
+				if (training::store::find_item(fields[0].c_str()) < 0)
+					continue;
+				StoreText text;
+				text.name = fields[1];
+				if (fields.size() > 2)
+					text.detail = fields[2];
+				if (fields.size() > 3 && !fields[3].empty())
+					text.price = std::atoi(fields[3].c_str());
+				texts[fields[0]] = text;
+			}
 		}
 
 		void StoreWindow::ShowCategory(int cat) {
@@ -679,7 +779,8 @@ namespace spades {
 
 			auto model = Handle<StoreGridModel>::New(
 			  &GetManager(), training::store::kItems,
-			  static_cast<int>(training::store::kItemCount), columns, indices,
+			  static_cast<int>(training::store::kItemCount), columns, &texts,
+			  indices,
 			  [this](int index, UIElement&) {
 			      const training::store::Item& item = training::store::kItems[index];
 			      Buy(item.sku);
@@ -732,10 +833,26 @@ namespace spades {
 			SetColorNP(r, MakeVector4(0, 0, 0, 0.7F));
 			r.DrawImage(nullptr, AABB2(0, 0, sw, sh));
 			const float w = std::min(GetManager().screenWidth - 32.0F, 1000.0F);
-			const float h = std::min(GetManager().screenHeight - 48.0F, 640.0F);
+			const float h = std::min(GetManager().screenHeight - 48.0F, 620.0F);
 			const AABB2 contents((sw - w) * 0.5F, (sh - h) * 0.5F, w, h);
 			SetColorNP(r, MakeVector4(0, 0, 0, 0.5F));
 			r.DrawImage(nullptr, contents);
+			// The shelf's own art, when the pak ships one: an image of the
+			// tab's Gfx/BG laid over the plain panel at the player's own
+			// veil. A missing image is not an error; the panel stands.
+			if (!tab_bg_read[category]) {
+				tab_bg_read[category] = true;
+				try {
+					tab_bg[category] = r.RegisterImage(kTabBackgrounds[category]);
+				} catch (const std::exception&) {
+					tab_bg[category] = {};
+				}
+			}
+			if (tab_bg[category]) {
+				SetColorNP(r, MakeVector4(1, 1, 1,
+					Clamp((float)cg_storeBgOpacity, 0.0F, 1.0F)));
+				r.DrawImage(tab_bg[category], contents);
+			}
 			// The cards read the store each draw: the purse, the prices and
 			// the owned marks all follow what the server last said.
 			if (ui->client != nullptr) {

@@ -773,6 +773,10 @@ namespace spades {
 				// rings keeps the key for whatever else it is bound to, as before.
 				if (CheckKey(cg_keyPieMenu, name)) {
 					if (down && !pieMenuView->IsOpen()) {
+						// The store page keeps the middle click for itself by the
+						// core, and the pie menu keeps it everywhere else.
+						if (!localPlayerIsSpectating && OpenStoreNearCore())
+							return;
 						if (OpenPieMenu() || !localPlayerIsSpectating)
 							return;
 					} else if (!down && pieMenuView->IsOpen()) {

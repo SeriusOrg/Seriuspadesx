@@ -134,6 +134,8 @@ namespace spades {
 			bool IsChatEnabled();
 
 			void EnterClientMenu();
+			/** Raises the store page over whatever stands under it. */
+			void OpenStoreWindow();
 			void EnterGlobalChatWindow();
 			void EnterTeamChatWindow();
 			void EnterChatLogWindow();

@@ -32,6 +32,7 @@
 #include <Gui/UI/InGame/ChatLogWindow.h>
 #include <Gui/UI/InGame/ChatWindow.h>
 #include <Gui/UI/InGame/VRControlsWindow.h>
+#include <Gui/UI/InGame/StoreWindow.h>
 #include <Gui/UI/InGame/ClientMenu.h>
 
 namespace spades {
@@ -186,6 +187,15 @@ namespace spades {
 			SetActiveUI(wnd.GetPointerOrNull());
 			chatPanel = wnd.GetPointerOrNull();
 			manager->SetActiveElement(wnd->field);
+		}
+
+		void ClientUI::OpenStoreWindow() {
+			// The store page rides over the gameplay the way the pie menu
+			// does: raised on the middle click by the core, and it gives
+			// the world back whatever stood under it when it closes.
+			auto window =
+				Handle<StoreWindow>::New(activeUI.GetPointerOrNull(), this);
+			window->Run();
 		}
 
 		void ClientUI::EnterGlobalChatWindow() {

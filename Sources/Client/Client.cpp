@@ -55,6 +55,7 @@
 #include <Gui/UI/Components/SoftwareCursor.h>
 #include <Gui/UI/Components/LimboMenu.h>
 #include "Corpse.h"
+#include "CTFGameMode.h"
 #include "SmokeSpriteEntity.h"
 
 #include "GameMap.h"
@@ -818,6 +819,45 @@ namespace spades {
 				return false;
 
 			pieMenuView->Open(std::move(pies), context, targetId);
+			return true;
+		}
+
+		bool Client::OpenStoreNearCore() {
+			// The store keeps the pie menu's key for itself, but only by
+			// the core: the same ground, five blocks around it, and the
+			// eye resting on its heart. Anywhere else the rings keep the
+			// key.
+			if (!GetStoreState().received || !world)
+				return false;
+			stmp::optional<IGameMode&> mode = world->GetMode();
+			if (!mode || mode->ModeType() != IGameMode::m_CTF)
+				return false;
+			auto& ctf = dynamic_cast<CTFGameMode&>(mode.value());
+			const Vector3 core = ctf.GetTeam(0).flagPos;
+			auto maybePlayer = world->GetLocalPlayer();
+			if (!maybePlayer || !maybePlayer->IsAlive())
+				return false;
+			const Player& lp = maybePlayer.value();
+			const Vector3 eye = lp.GetEye();
+			const Vector3 front = lp.GetFront();
+			const float dx = core.x - eye.x;
+			const float dy = core.y - eye.y;
+			// Five blocks around on the same ground, and a storey of give
+			// either way up.
+			if (dx * dx + dy * dy > 25.0F ||
+				std::fabs(core.z - eye.z) > 4.0F)
+				return false;
+			// The eye on the heart: two blocks of slack for a glance from
+			// the side, nothing for a look behind.
+			const Vector3 heart = core + MakeVector3(0, 0, 0.5F);
+			const float along = Vector3::Dot(heart - eye, front);
+			if (along <= 0.0F)
+				return false;
+			const Vector3 off = heart - (eye + front * along);
+			if (off.GetSquaredLength() > 4.0F)
+				return false;
+			if (scriptedUI)
+				scriptedUI->OpenStoreWindow();
 			return true;
 		}
 
