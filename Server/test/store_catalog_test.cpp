@@ -315,7 +315,11 @@ int main() {
         out.blocks = 30;
         out.owned_count = owned_count;
         for (std::uint8_t k = 0; k < owned_count; ++k) {
-            out.owned[k].index = static_cast<std::uint8_t>((k * 3) % n);
+            // A stride the catalogue's size shares nothing with, so no
+            // two pairs claim one index: level_of would otherwise read
+            // the second claim and fail the first (three shared a
+            // factor with the eleven dresses the catalogue grew by).
+            out.owned[k].index = static_cast<std::uint8_t>((k * 7) % n);
             out.owned[k].level = static_cast<std::uint8_t>(k + 1);
         }
         proto::ByteWriter bw;
