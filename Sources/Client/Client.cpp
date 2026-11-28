@@ -745,10 +745,9 @@ namespace spades {
 		}
 
 		void Client::PieMenuReceived(PieMenu menu) {
-			// Where each ring was left is only worth remembering for the same rings:
-			// a server sends its menu again once it knows the player's locale.
-			if (!serverPieMenu || serverPieMenu->pies != menu.pies)
-				pieMenuView->ForgetRings();
+			// A server sends its menu again once it knows the player's
+			// locale. The rings on offer change; the page the wheel opens
+			// on does not - the first ring, every time.
 			serverPieMenu = std::move(menu);
 		}
 
@@ -821,7 +820,7 @@ namespace spades {
 			if (pies.empty())
 				return false;
 
-			pieMenuView->Open(std::move(pies), context, targetId);
+			pieMenuView->Open(std::move(pies), targetId);
 			return true;
 		}
 
@@ -1850,6 +1849,13 @@ namespace spades {
 			// and release into a rocket's launch and its flight's aim:
 			// the player owns a word for it whenever the dress is worn.
 			p->SetRocketLauncher(WeaponDressTierFor(4) >= 1);
+			// The war hands its grenades out by the wave, so the count on
+			// the wire is the pouch's own truth, not anything the range
+			// restocked. Only a refill rides back - a throw is never
+			// unspent, and the tool keeps the count it paid out itself
+			// until the server says the pouch is fuller.
+			if (td && GetStoreState().grenades > p->GetNumGrenades())
+				p->SetNumGrenades(GetStoreState().grenades);
 		}
 
 		// A file a dressed gun loads: the dress's own when its pak ships

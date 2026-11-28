@@ -260,11 +260,11 @@ namespace spades {
 			// How wide a label may run inside its wedge, at the label radius, with
 			// some room left on either side.
 			constexpr float kLabelMaxWidth = 108.0F;
-			// A tooltip is read under the ring, as wide as the ring itself.
-			constexpr float kTooltipMaxWidth = 2.0F * kRingOuter;
-			// From the ring's furthest reach to the first tooltip line, clear of the
-			// page dots below the ring.
-			constexpr float kTooltipGap = 26.0F;
+			// A tooltip is read in the hole in the middle of the wheel, as
+			// wide as the hole: the word a highlighted slice has beyond its
+			// label, said there while it stands highlighted and gone as soon
+			// as another slice takes the hand.
+			constexpr float kTooltipWidth = 2.0F * kRingInner - 12.0F;
 
 			// A slice is styled by what it sends, so a wedge that pings, one that
 			// speaks and one that runs a command need not be told apart by reading.
@@ -371,12 +371,7 @@ namespace spades {
 
 		const Pie& PieMenuView::CurrentPie() const { return CurrentPage().pie; }
 
-		void PieMenuView::RestorePage() {
-			int remembered = lastPage[static_cast<size_t>(contextIndex)];
-			page = std::max(0, std::min(remembered, GetPageCount() - 1));
-		}
-
-		void PieMenuView::Open(std::vector<Pie> newPies, PieContext context, int tgtId) {
+		void PieMenuView::Open(std::vector<Pie> newPies, int tgtId) {
 			SPAssert(!newPies.empty());
 
 			pages.clear();
@@ -395,26 +390,23 @@ namespace spades {
 					if (p.labels[i].empty() && !slice.IsBlank())
 						p.labels[i] = "?";
 					p.lines[i] = FitLines(*font, p.labels[i], kLabelMaxWidth);
-					p.tooltips[i] = FitLines(*font, DisplayText(slice.tooltip), kTooltipMaxWidth);
+					p.tooltips[i] = FitLines(*font, DisplayText(slice.tooltip), kTooltipWidth);
 				}
 				p.pie = std::move(pie);
 				pages.push_back(std::move(p));
 			}
 
-			// A menu opens on exactly one context, and each has its own slot.
-			contextIndex = 0;
-			while (contextIndex < kContextCount && context != (1 << contextIndex))
-				contextIndex++;
-			SPAssert(contextIndex < kContextCount);
-
+			// The wheel opens on the first ring every time: the server that
+			// serves its own rings stands its page first, so wherever a
+			// player last left the wheel, the next open begins there.
 			open = true;
 			targetPlayerId = tgtId;
 			cursor = {0.0F, 0.0F};
 			selection = None;
+			page = 0;
 			openPhase = 0.0F;
 			pagePhase = 1.0F;
 			highlight.fill(0.0F);
-			RestorePage();
 		}
 
 		int PieMenuView::Close() {
@@ -438,7 +430,6 @@ namespace spades {
 				return;
 
 			page = ((page + dir) % count + count) % count;
-			lastPage[static_cast<size_t>(contextIndex)] = page;
 			pagePhase = 0.0F;
 			hintNeeded = false;
 
@@ -599,25 +590,43 @@ namespace spades {
 				}
 			}
 
-			// Center readout: currently selected slice label, scaled by its highlight
-			if (selection >= 0 && selection < kSliceCount && bigFont) {
+			// Center readout: the highlighted slice's own word first - its
+			// tooltip, said in as many lines as the hole takes - and its
+			// label when it has none, scaled by its highlight.
+			if (selection >= 0 && selection < kSliceCount) {
 				float h = highlight[selection];
-				const std::string& centerLabel = labels[selection];
-				// The hole in the middle is all it has: the big font while it fits,
-				// then the small one, cut short if even that does not.
-				float maxW = 2.0F * rInner - 12.0F;
-				IFont* centerFont = bigFont;
-				std::string text = centerLabel;
-				if (bigFont->Measure(text).x > maxW) {
-					centerFont = font;
-					text = Ellipsize(*font, text, maxW);
+				const auto& tip = CurrentPage().tooltips[selection];
+				if (!tip.empty() && font) {
+					float a = h * alpha * easedPage;
+					Vector4 col = MakeVector4(0.9F * a, 0.9F * a, 0.9F * a, a);
+					Vector4 shd = MakeVector4(0, 0, 0, 0.7F * a);
+					float lineH = font->Measure("A").y;
+					float y = center.y - lineH * static_cast<float>(tip.size()) * 0.5F;
+					for (const std::string& line : tip) {
+						float w = font->Measure(line).x;
+						font->DrawShadow(line, MakeVector2(center.x - w * 0.5F, y),
+								 1.0F, col, shd);
+						y += lineH;
+					}
+				} else if (bigFont) {
+					const std::string& centerLabel = labels[selection];
+					// The hole in the middle is all it has: the big font
+					// while it fits, the other one cut short if even
+					// that does not.
+					float maxW = 2.0F * rInner - 12.0F;
+					IFont* centerFont = bigFont;
+					std::string text = centerLabel;
+					if (bigFont->Measure(text).x > maxW) {
+						centerFont = font;
+						text = Ellipsize(*font, text, maxW);
+					}
+					Vector2 sz = centerFont->Measure(text);
+					Vector2 pos = {center.x - sz.x * 0.5F, center.y - sz.y * 0.5F};
+					float a = h * alpha * easedPage;
+					Vector4 col = MakeVector4(a, a, a, a);
+					Vector4 shd = MakeVector4(0, 0, 0, 0.7F * a);
+					centerFont->DrawShadow(text, pos, 1.0F, col, shd);
 				}
-				Vector2 sz = centerFont->Measure(text);
-				Vector2 pos = {center.x - sz.x * 0.5F, center.y - sz.y * 0.5F};
-				float a = h * alpha * easedPage;
-				Vector4 col = MakeVector4(a, a, a, a);
-				Vector4 shd = MakeVector4(0, 0, 0, 0.7F * a);
-				centerFont->DrawShadow(text, pos, 1.0F, col, shd);
 			} else if (font) {
 				// Nothing aimed at yet: name the ring instead, so which one is up
 				// can be read at a glance rather than inferred from six labels.
@@ -630,22 +639,6 @@ namespace spades {
 			}
 
 			DrawPageIndicator(center, rOuter, alpha);
-
-			// The highlighted slice's tooltip, under the ring and its page dots: the
-			// hole in the middle is too small for a sentence.
-			if (selection >= 0 && selection < kSliceCount && font) {
-				const auto& tip = CurrentPage().tooltips[selection];
-				float a = highlight[selection] * alpha * easedPage;
-				float lineH = font->Measure("A").y;
-				float y = center.y + rOuter + kHighlightReach + kTooltipGap;
-				for (const std::string& line : tip) {
-					float w = font->Measure(line).x;
-					font->DrawShadow(line, MakeVector2(center.x - w * 0.5F, y), 1.0F,
-									 MakeVector4(0.85F * a, 0.85F * a, 0.85F * a, a),
-									 MakeVector4(0, 0, 0, 0.6F * a));
-					y += lineH;
-				}
-			}
 		}
 
 		void PieMenuView::DrawPageIndicator(Vector2 center, float rOuter, float alpha) {

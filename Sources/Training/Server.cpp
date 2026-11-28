@@ -1774,9 +1774,20 @@ struct Server::Impl {
         p.gun.reset();
     }
 
+    // The war's own pouch: three grenades a wave, five once the rocket
+    // launcher is bought, for its rounds come out of the same pouch. The
+    // range keeps the three it always handed out.
+    int grenade_allowance(Player& p) {
+        const int rpg = store::find_item("rpg");
+        return tower_defense_mode() && rpg >= 0 &&
+                       p.store_level[static_cast<size_t>(rpg)] >= 1
+                   ? 5
+                   : 3;
+    }
+
     void refill(Player& p) {
         p.hp = 100;
-        p.grenades = 3;
+        p.grenades = grenade_allowance(p);
         p.blocks = 50;
         p.gun.restock();
     }
@@ -1801,6 +1812,9 @@ struct Server::Impl {
     // full on the client too). Only when nearly out, since a restock plays its
     // sound; not in the middle of a reload, which carries on with what it had.
     void keep_stocked(Player& p) {
+        // The war hands its grenades out by the wave alone and keeps no
+        // nurse on the field: the range restocks its own, the war does not.
+        if (tower_defense_mode()) return;
         if (!p.peer || !p.alive || p.aim_bot || p.zombie || p.gun.reloading) return;
         const bool low = p.gun.stock <= p.gun.spec().clip || p.grenades <= 0 || p.blocks <= 10;
         if (!low || world_time - p.last_restock < 1.5) return;
@@ -6339,6 +6353,11 @@ struct Server::Impl {
                         if (!o || o->zombie || o->aim_bot || !o->playing())
                             continue;
                         o->zc += bonus;
+                        // The next wave's pouch rides the same word: topped
+                        // up to the war's allowance, never taken away from,
+                        // and said to the client by the store's own state.
+                        const int pouch = grenade_allowance(*o);
+                        o->grenades = std::max(o->grenades, pouch);
                         system_chat("Wave bonus: +" + std::to_string(bonus) +
                                     " Zedcreds; " +
                                     std::to_string(o->zc) + " in hand.", o->id);
@@ -7090,7 +7109,7 @@ struct Server::Impl {
                 // so a client that knows them is sent neither vapour it does
                 // not need nor a pillar without its works. A horde world adds
                 // the pie menu on top: the wheel the middle button opens is
-                // served whole, its Defence page first, and a client that
+                // served whole, its Tower Defense page first, and a client that
                 // claimed it drops the rings it ships with for the server
                 // word. Anywhere else the wheel keeps its own.
                 ByteWriter bw;
@@ -7616,8 +7635,8 @@ struct Server::Impl {
     //
     // The middle button opens a wheel of rings, and a menu a server sends
     // replaces the client built-in rings entirely, ring for ring - so the
-    // Defence ring is served first, the page the wheel opens on wherever it
-    // is opened, and behind it the built-in rings are said again, their
+    // Tower Defense ring is served first, the page the wheel opens on every
+    // time it is opened, and behind it the built-in rings are said again, their
     // words and their marks, that nothing the wheel always offered is lost
     // to the server word. A ring is six slices whatever fills them: the
     // empty ones draw nothing and cannot be chosen. A slice is a chat line
@@ -7648,19 +7667,20 @@ struct Server::Impl {
         PieSliceDef slices[6];
     };
 
-    // The served whole. The Defence ring stands in every context, dead and
-    // spectating with the rest, for the wave word is owed wherever a
-    // defender stands. The built-in rings behind it keep the order the
-    // client ships them: the pointing ring that marks the aimed place with
-    // a ping the server takes, the words said to no-one in particular, the
-    // warnings and the asking said to the player under the crosshair
-    // alone, the taunt said to the whole server, and the pointing ring
-    // again wherever a player is the ground aimed at.
+    // The served whole. The Tower Defense ring stands in every context,
+    // dead and spectating with the rest, for the wave word is owed
+    // wherever a defender stands. The built-in rings behind it keep the
+    // order the client ships them: the pointing ring that marks the
+    // aimed place with a ping the server takes, the words said to
+    // no-one in particular, the warnings and the asking said to the
+    // player under the crosshair alone, the taunt said to the whole
+    // server, and the pointing ring again wherever a player is the
+    // ground aimed at.
     static const std::vector<PieRingDef>& pie_rings() {
         static const std::vector<PieRingDef> rings = {
           {kPieBlock | kPieTeammate | kPieEnemy | kPieSpectator | kPieDead |
                kPieSky,
-           "Defence",
+           "Tower Defense",
            {{"/turret1", "Turret 1",
              "a sentry of the first make, where you stand", false},
             {"/turret2", "Turret 2",
@@ -7670,8 +7690,9 @@ struct Server::Impl {
             {"/turretremove", "Take down",
              "your own sentries, taken down", false},
             {"/clearwave", "Clear wave",
-             "the standing wave, called off", false},
-            {"", "", "", false}}},
+             "Deactivates score tracking for this run", false},
+            {"/dosh 100", "Dosh 100",
+             "Deactivates score tracking for this run", false}}},
           {kPieBlock,
            "Point",
            {{"/pingmark %h Enemy Here!", "Enemy Here!", "", false},

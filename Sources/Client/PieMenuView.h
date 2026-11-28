@@ -55,7 +55,8 @@ namespace spades {
 				std::array<std::string, kSliceCount> labels;
 				// Each label broken into the lines that fit inside its wedge.
 				std::array<std::vector<std::string>, kSliceCount> lines;
-				// Each tooltip broken into the lines it takes under the ring.
+				// Each tooltip broken into the lines it takes in the hole in
+				// the middle of the wheel.
 				std::array<std::vector<std::string>, kSliceCount> tooltips;
 			};
 
@@ -64,7 +65,6 @@ namespace spades {
 			IFont* bigFont;
 
 			bool open = false;
-			int contextIndex = 0;
 			int targetPlayerId = -1;
 			Vector2 cursor = {0.0F, 0.0F};
 			int selection = None;
@@ -83,12 +83,6 @@ namespace spades {
 			// under a held thumb, whatever arrives while it is held.
 			std::vector<Page> pages;
 
-			// Ring each context was last left on. A player who works out of one ring
-			// gets it back on the next open instead of paying for the flip every time.
-			// One per bit of PieContext.
-			static constexpr int kContextCount = 6;
-			std::array<int, kContextCount> lastPage{};
-
 			// Precomputed per-slice ray params (sin/cos of θ_c ± α).
 			// Populated once in the constructor; used by scanline fill.
 			struct SliceRay { float s1, c1, s2, c2; };
@@ -97,7 +91,6 @@ namespace spades {
 
 			const Page& CurrentPage() const;
 			const Pie& CurrentPie() const;
-			void RestorePage();
 			void UpdateSelection();
 			void DrawPageIndicator(Vector2 center, float rOuter, float alpha);
 
@@ -106,13 +99,10 @@ namespace spades {
 			~PieMenuView();
 
 			/** Opens on the pies a context offers, which must not be empty.
+			 * The first ring is the page it opens on, every time.
 			 * `targetPlayerId` is the player aimed at, or `-1`. */
-			void Open(std::vector<Pie> pies, PieContext context, int targetPlayerId = -1);
+			void Open(std::vector<Pie> pies, int targetPlayerId = -1);
 			int Close();
-
-			/** Forgets the ring each context was left on, for a menu whose rings
-			 * are not the ones remembered. */
-			void ForgetRings() { lastPage.fill(0); }
 
 			bool IsOpen() const { return open; }
 			int GetTargetPlayerId() const { return targetPlayerId; }

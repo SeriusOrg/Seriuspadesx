@@ -218,6 +218,9 @@ namespace spades {
 			// ammo counts
 			int GetNumBlocks() { return blockStocks; }
 			int GetNumGrenades() { return grenades; }
+			/** The server's own word for the pouch, said without a
+			 * restock's side effects. */
+			void SetNumGrenades(int n) { grenades = std::max(0, n); }
 			void Reload();
 			void ReloadDone(int clip, int stock);
 			void Restock(int hp, int grenades, int blocks);
