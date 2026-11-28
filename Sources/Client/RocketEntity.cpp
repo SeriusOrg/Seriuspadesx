@@ -298,6 +298,9 @@ namespace spades {
 			float d2r = (float)kPi / 180.f;
 			// NOTE: Settings::ItemHandle exposes operator float(), not
 			// a FloatValue member (checked in Sources/Core/Settings.h).
+			// The rocket flies at 0.0425: the launch scale was
+			// brought 15 percent down, the rocket read too big
+			// against the world it struck.
 			Matrix4 mat = Matrix4::FromAxis(right, fwd, up, position) *
 			              Matrix4::Rotate(MakeVector3(1, 0, 0),
 			                              (float)cg_rocketPitchFix * d2r) *
@@ -305,7 +308,7 @@ namespace spades {
 			                              (float)cg_rocketYawFix * d2r) *
 			              Matrix4::Rotate(MakeVector3(0, 1, 0),
 			                              (float)cg_rocketRollFix * d2r) *
-			              Matrix4::Scale(0.05f);
+			              Matrix4::Scale(0.0425f);
 			ModelRenderParam p;
 			p.matrix = mat;
 			r->RenderModel(*rocketModel, p);

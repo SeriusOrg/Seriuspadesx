@@ -577,8 +577,13 @@ namespace spades {
 					} else if (action == BlockActionGrenade) {
 						for (int x = -1; x <= 1; x++)
 						for (int y = -1; y <= 1; y++)
-						for (int z = -1; z <= 1; z++)
+						for (int z = -1; z <= 1; z++) {
+							// The world's floor is never taken: the cube a
+							// grenade unmakes holds above the bedrock.
+							if (pos.z + z >= GetWorld()->GetMap()->GroundDepth())
+								continue;
 							cells.push_back(MakeIntVector3(pos.x + x, pos.y + y, pos.z + z));
+						}
 						GetWorld()->DestroyBlock(cells);
 						if (!seekingMode)
 							client->GrenadeDestroyedBlock(pos);

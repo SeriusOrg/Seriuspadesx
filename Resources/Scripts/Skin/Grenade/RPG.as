@@ -39,7 +39,9 @@ namespace spades {
 		// OVERALL WEAPON SCALE (the single knob to adjust the RPG size).
 		// 0.045 = original tuned value, 0.03 = scale pass
 		// (10 nov. 2026), 0.026 = refinement pass (11 nov. 2026,
-		// player feedback: the weapon read too big in first person).
+		// player feedback: the weapon read too big in first person),
+		// 0.0221 = 15 percent down (28 nov. 2026, player feedback:
+		// the RPG and its rocket read too big).
 		// Everything that expresses the weapon and its anchors in
 		// MODEL UNITS scales together with it:
 		//   - the weapon body and the loaded rocket (AddToScene)
@@ -54,7 +56,7 @@ namespace spades {
 		// NOTE: adsOffset is in world units, so after a scale change
 		// the full-ADS stance may need a light re-tune (the sights
 		// moved with the weapon, the ADS shift did not).
-		private float globalScale = 0.026F;
+		private float globalScale = 0.0221F;
 
 		// Seat of the loaded rocket at the muzzle (model units,
 		// same axes as the weapon model: y forward, -Z is up).

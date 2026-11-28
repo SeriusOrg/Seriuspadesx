@@ -6761,6 +6761,11 @@ struct Server::Impl {
                         dx * dx + dy * dy + dz * dz));
                     if (d > reach) continue;
                     const int nx = x + dx, ny = y + dy, nz = z + dz;
+                    // The ring keeps the floor of the world: the
+                    // bedrock is never said on the wire, for the
+                    // client takes the word at face value and the
+                    // map itself already holds below.
+                    if (nz >= 62) continue;
                     if (core_column_cell(nx, ny, nz)) continue;  // the core holds
                     const bool outside = dx < -1 || dx > 1 || dy < -1
                                          || dy > 1 || dz < -1 || dz > 1;
@@ -7681,14 +7686,11 @@ struct Server::Impl {
           {kPieBlock | kPieTeammate | kPieEnemy | kPieSpectator | kPieDead |
                kPieSky,
            "Tower Defense",
-           {{"/turret1", "Turret 1",
-             "a sentry of the first make, where you stand", false},
-            {"/turret2", "Turret 2",
-             "a sentry of the second make, where you stand", false},
-            {"/turret3", "Turret 3",
-             "a sentry of the third make, where you stand", false},
-            {"/turretremove", "Take down",
-             "your own sentries, taken down", false},
+           {{"/turret1", "Turret 1", "buys a tier 1 sentry", false},
+            {"/turret2", "Turret 2", "buys a tier 2 sentry", false},
+            {"/turret3", "Turret 3", "buys a tier 3 sentry", false},
+            {"/turretremove", "Take down", "takes down your sentries",
+             false},
             {"/clearwave", "Clear wave",
              "Deactivates score tracking for this run", false},
             {"/dosh 100", "Dosh 100",
