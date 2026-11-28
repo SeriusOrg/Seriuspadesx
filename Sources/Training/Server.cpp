@@ -1400,6 +1400,23 @@ struct Server::Impl {
         if (x != horde_cfg.core_x || y != horde_cfg.core_y) return false;
         return z >= core_top_z && z <= core_ground_z - 1;
     }
+    // The marker's own ground: a sphere of kCoreZoneRadius voxels
+    // around the column, held off the players' bricks and spades
+    // both - no tower walls the marker in, no trench buries the
+    // stairs the waves walk to it, and no pit undermines the
+    // floor it stands on. The horde keeps the older word: its
+    // strokes and its acid hold off the column alone.
+    static constexpr int kCoreZoneRadius = 5;
+    bool core_zone_cell(int x, int y, int z) const {
+        if (!tower_defense_mode()) return false;
+        const int dx = x - horde_cfg.core_x;
+        const int dy = y - horde_cfg.core_y;
+        int dz = 0;
+        if (z < core_top_z) dz = core_top_z - z;
+        if (z > core_ground_z - 1) dz = z - (core_ground_z - 1);
+        return dx * dx + dy * dy + dz * dz <=
+               kCoreZoneRadius * kCoreZoneRadius;
+    }
     // The core stands out of the ground in the colour of its team, a
     // column three blocks tall read off the real ground at its cell:
     // everything a client needs to see where to defend. The intel drawn
@@ -6946,6 +6963,7 @@ struct Server::Impl {
                     // map itself already holds below.
                     if (nz >= 62) continue;
                     if (core_column_cell(nx, ny, nz)) continue;  // the core holds
+                    if (core_zone_cell(nx, ny, nz)) continue;  // ground too
                     const bool outside = dx < -1 || dx > 1 || dy < -1
                                          || dy > 1 || dz < -1 || dz > 1;
                     if (g.rocket && outside) {
@@ -7740,6 +7758,12 @@ struct Server::Impl {
             return std::fabs(pos.x - x) < d && std::fabs(pos.y - y) < d && std::fabs(pos.z - z) < d;
         };
         if (value == kBuildBlock) {
+            // The marker's ground is off the builders: the refusal
+            // spends no block, the same word the seal veto speaks.
+            if (core_zone_cell(x, y, z)) {
+                system_chat("The core's ground takes no brick.", p.id);
+                return;
+            }
             // Tower Defense spends no block: the range stands its
             // builders in a standing fifty, refilled without a word.
             p.blocks -= tower_defense_mode() ? 0 : 1;
@@ -7757,6 +7781,10 @@ struct Server::Impl {
             if (!map.solid(x, y, z)) return;
             if (core_column_cell(x, y, z)) {
                 system_chat("The core cannot be torn down.", p.id);
+                return;
+            }
+            if (core_zone_cell(x, y, z)) {
+                system_chat("The core's ground takes no spade.", p.id);
                 return;
             }
             if (p.tool == kToolSpade &&
@@ -7803,9 +7831,17 @@ struct Server::Impl {
         // bricks that seal together what none seals alone slipped the
         // ask a cell never caught.
         std::vector<std::pair<int, int>> columns;
-        for (const Cell& c : pts)
-            if (!map.solid(c.x, c.y, c.z))
-                columns.emplace_back(c.x, c.y);
+        for (const Cell& c : pts) {
+            if (map.solid(c.x, c.y, c.z)) continue;
+            // The marker's ground is off the builders here too: a
+            // line that crosses it is refused whole, the same word
+            // the seal veto speaks for a line.
+            if (core_zone_cell(c.x, c.y, c.z)) {
+                system_chat("The core's ground takes no brick.", p.id);
+                return;
+            }
+            columns.emplace_back(c.x, c.y);
+        }
         if (horde && !horde->can_build_line(columns)) {
             system_chat("That line would seal the last way in.", p.id);
             return;   // a refusal spends no block and builds no brick
