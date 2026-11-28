@@ -198,32 +198,45 @@ int main() {
 
 	const std::uint16_t purse0 = start.zedcred;
 
-	// Ask for one the purse can cover: it is sold, and the purse falls by it.
+	// The classes are the mode's own now: every defender may stand in
+	// any of them, the change costing only the respawn into it, so the
+	// unlock cards are refused without a word - the verdict takes back
+	// the ownership and the purse pays nothing. The state is only said
+	// again on the five-second refresh, since nothing changed, so that
+	// is what is waited for.
 	c.Clear();
 	c.Send({kChatMessage, 0, 0, '/', 'b', 'u', 'y', ' ', 's', 'm', 'g', 0});
+	CHECK(Run(s, c, 8000, [&] { return ReadStore(c).seen; }));
+	CHECK(LevelOf(ReadStore(c), "smg") == 0);
+	CHECK(ReadStore(c).zedcred == purse0);
+
+	// Ask for one the purse can cover: it is sold, and the purse falls
+	// by it.
+	c.Clear();
+	c.Send({kChatMessage, 0, 0, '/', 'b', 'u', 'y', ' ', 'h', 'p', '1', 0});
 	CHECK(Run(s, c, 6000, [&] { return ReadStore(c).seen; }));
-	const int smg_price =
-	  training::store::kItems[training::store::find_item("smg")].price;
+	const int hp1_price =
+	  training::store::kItems[training::store::find_item("hp1")].price;
 	const StoreRead bought = ReadStore(c);
 	// The word says what it sold, and the purse says the same as the wire.
-	CHECK(LevelOf(bought, "smg") == 1);
-	CHECK(bought.zedcred == purse0 - static_cast<std::uint16_t>(smg_price));
+	CHECK(LevelOf(bought, "hp1") == 1);
+	CHECK(bought.zedcred == purse0 - static_cast<std::uint16_t>(hp1_price));
 
 	// Asked for twice, the second ask is refused: a cap is a cap, and a
 	// refusal takes no coin. The state is only said again on the five-second
 	// refresh, since nothing changed, so that is what is waited for.
 	c.Clear();
-	c.Send({kChatMessage, 0, 0, '/', 'b', 'u', 'y', ' ', 's', 'm', 'g', 0});
+	c.Send({kChatMessage, 0, 0, '/', 'b', 'u', 'y', ' ', 'h', 'p', '1', 0});
 	CHECK(Run(s, c, 8000, [&] { return ReadStore(c).seen; }));
-	CHECK(LevelOf(ReadStore(c), "smg") == 1);
+	CHECK(LevelOf(ReadStore(c), "hp1") == 1);
 	CHECK(ReadStore(c).zedcred == bought.zedcred);
 
 	// One the purse cannot reach: nothing is sold, and no coin moves.
 	c.Clear();
-	c.Send({kChatMessage, 0, 0, '/', 'b', 'u', 'y', ' ', 's', 'h', 'o', 't',
-	        'g', 'u', 'n', 0});
+	c.Send({kChatMessage, 0, 0, '/', 'b', 'u', 'y', ' ', 's', 'p', 'e', 'e',
+	        'd', '1', 0});
 	CHECK(Run(s, c, 8000, [&] { return ReadStore(c).seen; }));
-	CHECK(LevelOf(ReadStore(c), "shotgun") == 0);
+	CHECK(LevelOf(ReadStore(c), "speed1") == 0);
 	CHECK(ReadStore(c).zedcred == bought.zedcred);
 
 	// The word says the shelves when it names none, so a player can find
