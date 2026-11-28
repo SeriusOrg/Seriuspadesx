@@ -29,6 +29,7 @@
 #include "IAudioChunk.h"
 #include "RocketEntity.h"
 #include "IAudioDevice.h"
+#include "Weapon.h"
 
 #include "CTFGameMode.h"
 #include "GameProperties.h"

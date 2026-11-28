@@ -1142,9 +1142,13 @@ namespace spades {
 				// The RPG's cook is a raised tube and a closed sight, not
 				// a pulled pin: the dress pak's own raise sample speaks.
 				const bool rocket = p.IsLocalPlayer() && WeaponDressTierFor(4) >= 1;
+				// RegisterSound takes its path as a plain C string, so the
+				// dress's own path is said through the string's own word.
+				const std::string raised =
+					WeaponDressPath(4, "Sounds/Weapons/Rifle/RaiseLocal.opus");
 				Handle<IAudioChunk> c =
 					audioDevice->RegisterSound(rocket
-						? WeaponDressPath(4, "Sounds/Weapons/Rifle/RaiseLocal.opus")
+						? raised.c_str()
 						: "Sounds/Weapons/Grenade/Fire.opus");
 				if (IsPlayerInFirstPerson(p.GetId())) {
 					audioDevice->PlayLocal(c.GetPointerOrNull(),
