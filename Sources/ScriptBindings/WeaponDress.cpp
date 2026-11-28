@@ -99,7 +99,7 @@ namespace spades {
 
 	// The charm the gun's dress tier wears: the tier's own when a
 	// dress is worn, `stock` when it is not. Tier one rides with the
-	// bullet, two with the skull, three with the creep.
+	// bullet, two with the skull, three and four with the creep.
 	std::string WeaponCharmPath(int gun, const std::string& stock) {
 		if (gun < 0 || gun > 4)
 			return stock;
@@ -109,6 +109,8 @@ namespace spades {
 			case 2:
 				return "WeaponMods/Charms/Skull.kv6";
 			case 3:
+				return "WeaponMods/Charms/Creep.kv6";
+			case 4:
 				return "WeaponMods/Charms/Creep.kv6";
 			default:
 				return stock;

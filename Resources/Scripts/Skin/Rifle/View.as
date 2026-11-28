@@ -509,7 +509,8 @@ namespace spades {
 		switch(WeaponDressTier(0)) {
 		case 1: return ViewRifleM14Skin(r, dev);
 		case 2: return ViewRifleBallistaSkin(r, dev);
-		case 3: return ViewRifleSV99Skin(r, dev);
+		case 3: return ViewRifleRifolverSkin(r, dev);
+		case 4: return ViewRifleSV99Skin(r, dev);
 		}
 		return ViewRifleSkin(r, dev);
 	}

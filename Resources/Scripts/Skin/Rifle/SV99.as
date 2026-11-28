@@ -279,27 +279,27 @@ namespace spades {
 			@audioDevice = dev;
 
 			// load models
-			@gunModel = renderer.RegisterModel("WeaponMods/RifleLvl3/Models/Weapons/Rifle/WeaponNoMagazine.kv6");
-			@magazineModel = renderer.RegisterModel("WeaponMods/RifleLvl3/Models/Weapons/Rifle/Magazine.kv6");
-			@bulletModel = renderer.RegisterModel("WeaponMods/RifleLvl3/Models/Weapons/Rifle/Bullet.kv6");
-			@rearSightModel = renderer.RegisterModel("WeaponMods/RifleLvl3/Models/Weapons/Rifle/SightRear.kv6");
-			@frontSightModel = renderer.RegisterModel("WeaponMods/RifleLvl3/Models/Weapons/Rifle/SightFront.kv6");
-			@reflexSightModel = renderer.RegisterModel("WeaponMods/RifleLvl3/Models/Weapons/Rifle/SightReflex.kv6");
-			@leverModel = renderer.RegisterModel("WeaponMods/RifleLvl3/Models/Weapons/Rifle/Lever.kv6");
-			@lensModel = renderer.RegisterModel("WeaponMods/RifleLvl3/Models/Weapons/Rifle/Lens.kv6");
+			@gunModel = renderer.RegisterModel("WeaponMods/RifleLvl4/Models/Weapons/Rifle/WeaponNoMagazine.kv6");
+			@magazineModel = renderer.RegisterModel("WeaponMods/RifleLvl4/Models/Weapons/Rifle/Magazine.kv6");
+			@bulletModel = renderer.RegisterModel("WeaponMods/RifleLvl4/Models/Weapons/Rifle/Bullet.kv6");
+			@rearSightModel = renderer.RegisterModel("WeaponMods/RifleLvl4/Models/Weapons/Rifle/SightRear.kv6");
+			@frontSightModel = renderer.RegisterModel("WeaponMods/RifleLvl4/Models/Weapons/Rifle/SightFront.kv6");
+			@reflexSightModel = renderer.RegisterModel("WeaponMods/RifleLvl4/Models/Weapons/Rifle/SightReflex.kv6");
+			@leverModel = renderer.RegisterModel("WeaponMods/RifleLvl4/Models/Weapons/Rifle/Lever.kv6");
+			@lensModel = renderer.RegisterModel("WeaponMods/RifleLvl4/Models/Weapons/Rifle/Lens.kv6");
 			// replace the stock hanging charm with SC.kv6
-			@charmModel = renderer.RegisterModel("WeaponMods/RifleLvl3/Models/Weapons/Rifle/SC.kv6");
+			@charmModel = renderer.RegisterModel("WeaponMods/RifleLvl4/Models/Weapons/Rifle/SC.kv6");
 
 			// load sounds
-			@fireSound = dev.RegisterSound("WeaponMods/RifleLvl3/Sounds/Weapons/Rifle/FireLocal.opus");
+			@fireSound = dev.RegisterSound("WeaponMods/RifleLvl4/Sounds/Weapons/Rifle/FireLocal.opus");
 			@fireFarSound = dev.RegisterSound("Sounds/Weapons/Rifle/FireFar.opus");
-			@fireStereoSound = dev.RegisterSound("WeaponMods/RifleLvl3/Sounds/Weapons/Rifle/FireStereo.opus");
-			@fireSmallReverbSound = dev.RegisterSound("WeaponMods/RifleLvl3/Sounds/Weapons/Rifle/V2AmbienceSmall.opus");
-			@fireLargeReverbSound = dev.RegisterSound("WeaponMods/RifleLvl3/Sounds/Weapons/Rifle/V2AmbienceLarge.opus");
+			@fireStereoSound = dev.RegisterSound("WeaponMods/RifleLvl4/Sounds/Weapons/Rifle/FireStereo.opus");
+			@fireSmallReverbSound = dev.RegisterSound("WeaponMods/RifleLvl4/Sounds/Weapons/Rifle/V2AmbienceSmall.opus");
+			@fireLargeReverbSound = dev.RegisterSound("WeaponMods/RifleLvl4/Sounds/Weapons/Rifle/V2AmbienceLarge.opus");
 			@reloadSound = dev.RegisterSound("Sounds/Weapons/Rifle/ReloadLocal.opus");
 
 			// load images
-			@scopeImage = renderer.RegisterImage("WeaponMods/RifleLvl3/Gfx/noscope.png");
+			@scopeImage = renderer.RegisterImage("WeaponMods/RifleLvl4/Gfx/noscope.png");
 			@smokeImage = renderer.RegisterImage("Textures/WaterExpl.png");
 
 			// initial raise spring

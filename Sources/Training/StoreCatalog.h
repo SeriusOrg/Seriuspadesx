@@ -65,7 +65,7 @@ struct Item {
     // A weapon dress rides in its own pak folder, and the client puts
     // that folder in front of the stock paths the skin scripts load:
     // nullptr for everything that is not a dress. A dress also sits in
-    // its class's upgrade ladder - tier 1, 2 or 3 - and the class wears
+    // its class's upgrade ladder - tier 1 to 4 - and the class wears
     // the highest tier its owner has bought: 0 for everything that is
     // not a dress.
     const char* dress;
@@ -175,7 +175,7 @@ constexpr Item kItems[] = {
     // choice to make: a class wears the highest tier its owner has
     // bought, so a class's dresses are tiers of one ladder, each
     // asking for the one below it (prereq), and the stock gun is where
-    // every ladder starts. The rifle and the SMG climb three rungs,
+    // every ladder starts. The rifle and the SMG climb four rungs,
     // their tier 1 a dress of the gun's own (free: a dress priced at
     // zero is granted to every defender at spawn, so the ladder's
     // floor is worn from the first breath); the shotgun and the spade
@@ -183,7 +183,7 @@ constexpr Item kItems[] = {
     // the grenade has one rung. A tier is looks AND numbers: the
     // stats a class fights with climb the ladder in WeaponTiers.h.
     // The charm a dressed gun shows rides on the tier: bullet at 1,
-    // skull at 2, creep at 3.
+    // skull at 2, creep at 3 and 4.
     {"rifle_lvl1", "M14 Battle Rifle", "A battle rifle's dress, tier 1.", 0,
      kGuns, kEffectWeaponSkin, 0, 1, kNone,
      "WeaponMods/RifleLvl1/Models/Weapons/Rifle/Weapon.kv6",
@@ -192,19 +192,19 @@ constexpr Item kItems[] = {
      kGuns, kEffectWeaponSkin, 0, 1, 25,
      "WeaponMods/RifleLvl2/Models/Weapons/Rifle/WeaponNoMagazine.kv6",
      nullptr, "WeaponMods/RifleLvl2/", 2},
-    {"rifle_lvl3", "SV99 Forest Camo", "A bolt sniper's dress, tier 3.", 150,
+    {"rifle_lvl3", "Rifolver", "A revolver carbine's dress, tier 3.", 150,
      kGuns, kEffectWeaponSkin, 0, 1, 26,
      "WeaponMods/RifleLvl3/Models/Weapons/Rifle/Weapon.kv6",
      nullptr, "WeaponMods/RifleLvl3/", 3},
-    {"smg_lvl1", "AK-47", "The classic's dress, tier 1.", 0,
+    {"smg_lvl1", "MP5K", "A compact carbine's dress, tier 1.", 0,
      kGuns, kEffectWeaponSkin, 1, 1, kNone,
-     "WeaponMods/SMGLvl1/Models/Weapons/SMG/Weapon.kv6",
+     "WeaponMods/SMGLvl1/Models/Weapons/SMG/WeaponFP.kv6",
      nullptr, "WeaponMods/SMGLvl1/", 1},
-    {"smg_lvl2", "M4 Magpul", "A modern carbine's dress, tier 2.", 100,
+    {"smg_lvl2", "AK-47", "The classic's dress, tier 2.", 100,
      kGuns, kEffectWeaponSkin, 1, 1, 28,
      "WeaponMods/SMGLvl2/Models/Weapons/SMG/Weapon.kv6",
      nullptr, "WeaponMods/SMGLvl2/", 2},
-    {"smg_lvl3", "M134 Minigun", "A handheld minigun's dress, tier 3.", 150,
+    {"smg_lvl3", "M4 Magpul", "A modern carbine's dress, tier 3.", 150,
      kGuns, kEffectWeaponSkin, 1, 1, 29,
      "WeaponMods/SMGLvl3/Models/Weapons/SMG/Weapon.kv6",
      nullptr, "WeaponMods/SMGLvl3/", 3},
@@ -228,6 +228,14 @@ constexpr Item kItems[] = {
      kGuns, kEffectWeaponSkin, 4, 1, kNone,
      "WeaponMods/GrenadeRPG/Models/Weapons/Grenade/Grenade.kv6",
      nullptr, "WeaponMods/GrenadeRPG/", 1},
+    {"rifle_lvl4", "SV99 Forest Camo", "A bolt sniper's dress, tier 4.", 200,
+     kGuns, kEffectWeaponSkin, 0, 1, 27,
+     "WeaponMods/RifleLvl4/Models/Weapons/Rifle/Weapon.kv6",
+     nullptr, "WeaponMods/RifleLvl4/", 4},
+    {"smg_lvl4", "M134 Minigun", "A handheld minigun's dress, tier 4.", 200,
+     kGuns, kEffectWeaponSkin, 1, 1, 30,
+     "WeaponMods/SMGLvl4/Models/Weapons/SMG/Weapon.kv6",
+     nullptr, "WeaponMods/SMGLvl4/", 4},
 };
 
 constexpr size_t kItemCount = sizeof(kItems) / sizeof(kItems[0]);

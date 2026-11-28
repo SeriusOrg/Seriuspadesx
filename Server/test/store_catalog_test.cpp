@@ -57,9 +57,9 @@ int main() {
         }
         // A dress is a rung of its class's upgrade ladder, and nothing
         // else sits on a ladder: the class wears the highest tier its
-        // owner has bought, so a tier is 1, 2 or 3.
+        // owner has bought, so a tier is 1 to 4.
         if (eff == training::store::kEffectWeaponSkin)
-            CHECK(item(i).tier >= 1 && item(i).tier <= 3);
+            CHECK(item(i).tier >= 1 && item(i).tier <= 4);
         else
             CHECK(item(i).tier == 0);
     }
@@ -116,7 +116,7 @@ int main() {
                 CHECK(item(i).tier != item(j).tier);
 
     // --- the ladders the classes climb -----------------------------------
-    // WeaponTiers.h: rung 0 the classic table, rungs 1 to 3 the stats the
+    // WeaponTiers.h: rung 0 the classic table, rungs 1 to 4 the stats the
     // store sells. The server pays its damage out of this table and the
     // client aims, reloads and shows its numbers by it, so the classic row
     // is pinned hard: drift there would change every world the store
@@ -129,7 +129,7 @@ int main() {
         CHECK(stock.reload_time > 0.0F);
         for (int d : stock.damage) CHECK(d > 0);
         CHECK(stock.recoil == 1.0F);
-        for (int t = 1; t <= 3; ++t) {
+        for (int t = 1; t <= 4; ++t) {
             const auto& rung = training::tiers::kGuns[g][t];
             CHECK(rung.delay > 0.0F);
             for (int d : rung.damage) CHECK(d > 0);

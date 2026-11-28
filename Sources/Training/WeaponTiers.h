@@ -8,7 +8,7 @@
 //
 // Rung 0 is the stock gun: the training range and every world the store
 // never stood in fight with it, so its row is the classic table,
-// untouched. Rungs 1 to 3 are the ladder - the first rung is the class's
+// untouched. Rungs 1 to 4 are the ladder - the first rung is the class's
 // own starting shape (free, granted at spawn for the classes whose
 // first rung is a dress), and each rung above it is bought with the
 // one below it as its prerequisite.
@@ -27,27 +27,35 @@ namespace tiers {
         float recoil;       // the view kick, as a share of the stock gun's
     };
 
-    constexpr GunSpec kGuns[3][4] = {
-        {   // rifle: the M14, the Ballista, the SV99. The M14 is the
-            // class's own starting shape: one round a second, a
-            // magazine of seven, and the stock table's own damage;
-            // the paid rungs climb the cadence and double it twice
-            // over.
-            {0.5F, 10, 50, 2.5F, false, {49, 100, 33, 33}, 1.0F},
-            {1.0F, 7, 35, 2.5F, false, {49, 100, 33, 33}, 1.0F},
-            {0.9091F, 10, 50, 2.5F, false, {98, 200, 66, 66}, 1.0F},
-            {0.6667F, 14, 70, 2.5F, false, {196, 400, 132, 132}, 1.0F},
+    constexpr GunSpec kGuns[3][5] = {
+        {   // rifle: the M14, the Ballista, the Rifolver, the SV99.
+            // The M14 is the class's own starting shape: the stock
+            // cadence, eighty percent of the stock damage and the
+            // magazine of five; each paid rung climbs the cadence,
+            // the damage and the magazine together.
+            {0.5F, 5, 25, 2.5F, false, {39, 80, 26, 26}, 1.0F},
+            {0.4545F, 7, 35, 2.5F, false, {59, 120, 40, 40}, 1.0F},
+            {0.3571F, 10, 50, 2.5F, false, {78, 160, 53, 53}, 1.0F},
+            {0.3125F, 12, 60, 2.5F, false, {98, 200, 66, 66}, 1.0F},
         },
-        {   // SMG: the AK-47, the M4 Magpul, the M134
-            {0.11F, 30, 120, 2.5F, false, {29, 75, 18, 18}, 1.0F},
-            {0.11F, 24, 96, 2.5F, false, {23, 60, 14, 14}, 2.0F},
-            {0.11F, 40, 160, 2.5F, false, {29, 75, 18, 18}, 0.5F},
-            {0.055F, 240, 480, 2.5F, false, {58, 150, 36, 36}, 2.0F},
+        {   // SMG: the MP5K, the AK-47, the M4 Magpul, the M134. The
+            // MP5K is the class's own starting shape: sixty percent of
+            // the stock damage and a light kick; the AK-47 kicks hard
+            // and vertical, the M4 sits between, the M134 kicks hard
+            // again and carries the horde's whole weight of rounds.
+            {0.11F, 18, 72, 2.5F, false, {17, 45, 11, 11}, 0.5F},
+            {0.1F, 24, 96, 2.5F, false, {29, 75, 18, 18}, 2.0F},
+            {0.0917F, 32, 128, 2.5F, false, {35, 90, 22, 22}, 1.0F},
+            {0.0611F, 240, 480, 2.5F, false, {41, 105, 25, 25}, 2.0F},
         },
         {   // shotgun: the stock shape, the SPAS-12, the Remington
             {1.0F, 6, 48, 0.5F, true, {27, 37, 16, 16}, 1.0F},
             {1.0F, 6, 48, 0.5F, true, {22, 30, 13, 13}, 1.0F},
             {1.0F, 8, 64, 0.5F, true, {32, 44, 19, 19}, 1.0F},
+            {1.0F, 12, 96, 0.5F, true, {54, 74, 32, 32}, 1.0F},
+            // The fourth rung is the third again: the shotgun's
+            // ladder stops at three, and the row keeps the table
+            // square.
             {1.0F, 12, 96, 0.5F, true, {54, 74, 32, 32}, 1.0F},
         },
     };

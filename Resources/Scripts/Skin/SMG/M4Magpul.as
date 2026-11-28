@@ -55,37 +55,37 @@ namespace spades {
 			super( r );
 			@audioDevice = dev;
 			@gunModel = renderer.RegisterModel
-				( "WeaponMods/SMGLvl2/Models/Weapons/SMG/WeaponNoMagazine.kv6" );
+				( "WeaponMods/SMGLvl3/Models/Weapons/SMG/WeaponNoMagazine.kv6" );
 			@chargingHandleModel = renderer.RegisterModel
-				( "WeaponMods/SMGLvl2/Models/Weapons/SMG/ChargingHandle.kv6" );
+				( "WeaponMods/SMGLvl3/Models/Weapons/SMG/ChargingHandle.kv6" );
 			@magazineEmptyModel = renderer.RegisterModel
-				( "WeaponMods/SMGLvl2/Models/Weapons/SMG/MagazineEmpty.kv6" );
+				( "WeaponMods/SMGLvl3/Models/Weapons/SMG/MagazineEmpty.kv6" );
 			@magazineLoadedModel = renderer.RegisterModel
-				( "WeaponMods/SMGLvl2/Models/Weapons/SMG/Magazine.kv6" );
+				( "WeaponMods/SMGLvl3/Models/Weapons/SMG/Magazine.kv6" );
 			@sightsFrontModel = renderer.RegisterModel
-				( "WeaponMods/SMGLvl2/Models/Weapons/SMG/SightsFront.kv6" );
+				( "WeaponMods/SMGLvl3/Models/Weapons/SMG/SightsFront.kv6" );
 			@sightsPinModel = renderer.RegisterModel
-				( "WeaponMods/SMGLvl2/Models/Weapons/SMG/SightsPin.kv6" );
+				( "WeaponMods/SMGLvl3/Models/Weapons/SMG/SightsPin.kv6" );
 			@sightsReflexModel = renderer.RegisterModel
-				( "WeaponMods/SMGLvl2/Models/Weapons/SMG/SightsReflex.kv6" );
+				( "WeaponMods/SMGLvl3/Models/Weapons/SMG/SightsReflex.kv6" );
 
 			@fireSounds[0] = dev.RegisterSound
-				( "WeaponMods/SMGLvl2/Sounds/Weapons/SMG/V2Local1.opus" );
+				( "WeaponMods/SMGLvl3/Sounds/Weapons/SMG/V2Local1.opus" );
 			@fireSounds[1] = dev.RegisterSound
-				( "WeaponMods/SMGLvl2/Sounds/Weapons/SMG/V2Local2.opus" );
+				( "WeaponMods/SMGLvl3/Sounds/Weapons/SMG/V2Local2.opus" );
 			@fireSounds[2] = dev.RegisterSound
-				( "WeaponMods/SMGLvl2/Sounds/Weapons/SMG/V2Local3.opus" );
+				( "WeaponMods/SMGLvl3/Sounds/Weapons/SMG/V2Local3.opus" );
 			@fireSounds[3] = dev.RegisterSound
-				( "WeaponMods/SMGLvl2/Sounds/Weapons/SMG/V2Local4.opus" );
+				( "WeaponMods/SMGLvl3/Sounds/Weapons/SMG/V2Local4.opus" );
 			@fireFarSound = dev.RegisterSound
-				( "WeaponMods/SMGLvl2/Sounds/Weapons/SMG/FireFar.opus" );
+				( "WeaponMods/SMGLvl3/Sounds/Weapons/SMG/FireFar.opus" );
 			@fireStereoSound = dev.RegisterSound
-				( "WeaponMods/SMGLvl2/Sounds/Weapons/SMG/FireStereo.opus" );
+				( "WeaponMods/SMGLvl3/Sounds/Weapons/SMG/FireStereo.opus" );
 			@reloadSound = dev.RegisterSound
-				( "WeaponMods/SMGLvl2/Sounds/Weapons/SMG/ReloadLocal.opus" );
+				( "WeaponMods/SMGLvl3/Sounds/Weapons/SMG/ReloadLocal.opus" );
 
 			@reflexImage = renderer.RegisterImage
-				( "WeaponMods/SMGLvl2/Gfx/ReflexRound.png" );
+				( "WeaponMods/SMGLvl3/Gfx/ReflexRound.png" );
 
 			@scopeImage = renderer.RegisterImage("Gfx/SMG.png");
 

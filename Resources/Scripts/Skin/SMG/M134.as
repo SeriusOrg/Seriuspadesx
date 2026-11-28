@@ -416,31 +416,31 @@ namespace spades {
 			@audioDevice = dev;
 
 			// load models
-			@gunModel = renderer.RegisterModel("WeaponMods/SMGLvl3/Models/Weapons/SMG/WeaponNoMagazine.kv6");
-			@barrelModel = renderer.RegisterModel("WeaponMods/SMGLvl3/Models/Weapons/SMG/Barrels.kv6");
-			@magazineModel = renderer.RegisterModel("WeaponMods/SMGLvl3/Models/Weapons/SMG/Magazine.kv6");
-			@rearSightModel = renderer.RegisterModel("WeaponMods/SMGLvl3/Models/Weapons/SMG/SightRear.kv6");
+			@gunModel = renderer.RegisterModel("WeaponMods/SMGLvl4/Models/Weapons/SMG/WeaponNoMagazine.kv6");
+			@barrelModel = renderer.RegisterModel("WeaponMods/SMGLvl4/Models/Weapons/SMG/Barrels.kv6");
+			@magazineModel = renderer.RegisterModel("WeaponMods/SMGLvl4/Models/Weapons/SMG/Magazine.kv6");
+			@rearSightModel = renderer.RegisterModel("WeaponMods/SMGLvl4/Models/Weapons/SMG/SightRear.kv6");
 
 			// load sounds
-			@fireSounds[0] = dev.RegisterSound("WeaponMods/SMGLvl3/Sounds/Weapons/SMG/V2Local1.opus");
-			@fireSounds[1] = dev.RegisterSound("WeaponMods/SMGLvl3/Sounds/Weapons/SMG/V2Local2.opus");
-			@fireSounds[2] = dev.RegisterSound("WeaponMods/SMGLvl3/Sounds/Weapons/SMG/V2Local3.opus");
-			@fireSounds[3] = dev.RegisterSound("WeaponMods/SMGLvl3/Sounds/Weapons/SMG/V2Local4.opus");
-			@fireFarSound = dev.RegisterSound("WeaponMods/SMGLvl3/Sounds/Weapons/SMG/FireFar.opus");
-			@fireStereoSound = dev.RegisterSound("WeaponMods/SMGLvl3/Sounds/Weapons/SMG/FireStereo.opus");
-			@fireSmallReverbSounds[0] = dev.RegisterSound("WeaponMods/SMGLvl3/Sounds/Weapons/SMG/V2AmbienceSmall1.opus");
-			@fireSmallReverbSounds[1] = dev.RegisterSound("WeaponMods/SMGLvl3/Sounds/Weapons/SMG/V2AmbienceSmall2.opus");
-			@fireSmallReverbSounds[2] = dev.RegisterSound("WeaponMods/SMGLvl3/Sounds/Weapons/SMG/V2AmbienceSmall3.opus");
-			@fireSmallReverbSounds[3] = dev.RegisterSound("WeaponMods/SMGLvl3/Sounds/Weapons/SMG/V2AmbienceSmall4.opus");
-			@fireLargeReverbSounds[0] = dev.RegisterSound("WeaponMods/SMGLvl3/Sounds/Weapons/SMG/V2AmbienceLarge1.opus");
-			@fireLargeReverbSounds[1] = dev.RegisterSound("WeaponMods/SMGLvl3/Sounds/Weapons/SMG/V2AmbienceLarge2.opus");
-			@fireLargeReverbSounds[2] = dev.RegisterSound("WeaponMods/SMGLvl3/Sounds/Weapons/SMG/V2AmbienceLarge3.opus");
-			@fireLargeReverbSounds[3] = dev.RegisterSound("WeaponMods/SMGLvl3/Sounds/Weapons/SMG/V2AmbienceLarge4.opus");
+			@fireSounds[0] = dev.RegisterSound("WeaponMods/SMGLvl4/Sounds/Weapons/SMG/V2Local1.opus");
+			@fireSounds[1] = dev.RegisterSound("WeaponMods/SMGLvl4/Sounds/Weapons/SMG/V2Local2.opus");
+			@fireSounds[2] = dev.RegisterSound("WeaponMods/SMGLvl4/Sounds/Weapons/SMG/V2Local3.opus");
+			@fireSounds[3] = dev.RegisterSound("WeaponMods/SMGLvl4/Sounds/Weapons/SMG/V2Local4.opus");
+			@fireFarSound = dev.RegisterSound("WeaponMods/SMGLvl4/Sounds/Weapons/SMG/FireFar.opus");
+			@fireStereoSound = dev.RegisterSound("WeaponMods/SMGLvl4/Sounds/Weapons/SMG/FireStereo.opus");
+			@fireSmallReverbSounds[0] = dev.RegisterSound("WeaponMods/SMGLvl4/Sounds/Weapons/SMG/V2AmbienceSmall1.opus");
+			@fireSmallReverbSounds[1] = dev.RegisterSound("WeaponMods/SMGLvl4/Sounds/Weapons/SMG/V2AmbienceSmall2.opus");
+			@fireSmallReverbSounds[2] = dev.RegisterSound("WeaponMods/SMGLvl4/Sounds/Weapons/SMG/V2AmbienceSmall3.opus");
+			@fireSmallReverbSounds[3] = dev.RegisterSound("WeaponMods/SMGLvl4/Sounds/Weapons/SMG/V2AmbienceSmall4.opus");
+			@fireLargeReverbSounds[0] = dev.RegisterSound("WeaponMods/SMGLvl4/Sounds/Weapons/SMG/V2AmbienceLarge1.opus");
+			@fireLargeReverbSounds[1] = dev.RegisterSound("WeaponMods/SMGLvl4/Sounds/Weapons/SMG/V2AmbienceLarge2.opus");
+			@fireLargeReverbSounds[2] = dev.RegisterSound("WeaponMods/SMGLvl4/Sounds/Weapons/SMG/V2AmbienceLarge3.opus");
+			@fireLargeReverbSounds[3] = dev.RegisterSound("WeaponMods/SMGLvl4/Sounds/Weapons/SMG/V2AmbienceLarge4.opus");
 			@reloadSound = dev.RegisterSound("Sounds/Weapons/SMG/ReloadLocal.opus");
-			@spinLoopSound = dev.RegisterSound("WeaponMods/SMGLvl3/Sounds/Weapons/SMG/SpinLoop.opus");
-			@spinDownSound = dev.RegisterSound("WeaponMods/SMGLvl3/Sounds/Weapons/SMG/SpinDown.opus");
-			@spinTickSound = dev.RegisterSound("WeaponMods/SMGLvl3/Sounds/Weapons/SMG/SpinTick.opus");
-			@sightClickSound = dev.RegisterSound("WeaponMods/SMGLvl3/Sounds/Weapons/SMG/SightClic.opus");
+			@spinLoopSound = dev.RegisterSound("WeaponMods/SMGLvl4/Sounds/Weapons/SMG/SpinLoop.opus");
+			@spinDownSound = dev.RegisterSound("WeaponMods/SMGLvl4/Sounds/Weapons/SMG/SpinDown.opus");
+			@spinTickSound = dev.RegisterSound("WeaponMods/SMGLvl4/Sounds/Weapons/SMG/SpinTick.opus");
+			@sightClickSound = dev.RegisterSound("WeaponMods/SMGLvl4/Sounds/Weapons/SMG/SightClic.opus");
 
 			// smoke trail sprite. NOTE: RegisterImage returns null
 			// SILENTLY when a path does not resolve (no log line,

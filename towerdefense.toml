@@ -92,7 +92,7 @@ price_turret1 = 5
 price_turret2 = 10
 price_turret3 = 30
 
-# The dresses, a rung a line: the rifle and the SMG climb three, their
+# The dresses, a rung a line: the rifle and the SMG climb four, their
 # tier 1 the class's own starting shape, free (granted at spawn, so a
 # price above zero here is a price the rung is simply bought at); the
 # shotgun and the spade start at tier 2, their stock shape being their
@@ -102,9 +102,11 @@ price_turret3 = 30
 price_rifle_lvl1 = 0
 price_rifle_lvl2 = 100
 price_rifle_lvl3 = 150
+price_rifle_lvl4 = 200
 price_smg_lvl1 = 0
 price_smg_lvl2 = 100
 price_smg_lvl3 = 150
+price_smg_lvl4 = 200
 price_shotgun_lvl2 = 60
 price_shotgun_lvl3 = 120
 price_spade_lvl2 = 30

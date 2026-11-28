@@ -159,7 +159,7 @@ namespace spades {
 				};
 				if (item.effect != training::store::kEffectWeaponSkin)
 					return out;
-				if (item.arg <= 2 && item.tier <= 3) {
+				if (item.arg <= 2 && item.tier <= 4) {
 					const auto& s =
 					  training::tiers::kGuns[item.arg][item.tier];
 					add("Damage", std::to_string(s.damage[0]));

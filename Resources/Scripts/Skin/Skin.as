@@ -25,7 +25,9 @@
 // front of every file it loads.
 #include "Rifle/M14.as"
 #include "Rifle/Ballista.as"
+#include "Rifle/Rifolver.as"
 #include "Rifle/SV99.as"
+#include "SMG/MP5K.as"
 #include "SMG/AK47.as"
 #include "SMG/M4Magpul.as"
 #include "SMG/M134.as"
