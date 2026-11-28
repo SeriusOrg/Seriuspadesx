@@ -28,21 +28,24 @@ namespace tiers {
     };
 
     constexpr GunSpec kGuns[3][5] = {
-        {   // rifle: the M14, the Ballista, the Rifolver, the SV99.
-            // The M14 is the class's own starting shape: the stock
-            // cadence, eighty percent of the stock damage and the
-            // magazine of five; each paid rung climbs the cadence,
-            // the damage and the magazine together.
+        {   // rifle: the stock gun, then the M14, the Ballista, the
+            // Rifolver, the SV99. The M14 is the class's own starting
+            // shape: the stock cadence, eighty percent of the stock
+            // damage and the magazine of five; each paid rung climbs
+            // the cadence, the damage and the magazine together.
+            {0.5F, 10, 50, 2.5F, false, {49, 100, 33, 33}, 1.0F},
             {0.5F, 5, 25, 2.5F, false, {39, 80, 26, 26}, 1.0F},
             {0.4545F, 7, 35, 2.5F, false, {59, 120, 40, 40}, 1.0F},
             {0.3571F, 10, 50, 2.5F, false, {78, 160, 53, 53}, 1.0F},
             {0.3125F, 12, 60, 2.5F, false, {98, 200, 66, 66}, 1.0F},
         },
-        {   // SMG: the MP5K, the AK-47, the M4 Magpul, the M134. The
-            // MP5K is the class's own starting shape: sixty percent of
-            // the stock damage and a light kick; the AK-47 kicks hard
-            // and vertical, the M4 sits between, the M134 kicks hard
-            // again and carries the horde's whole weight of rounds.
+        {   // SMG: the stock gun, then the MP5K, the AK-47, the M4
+            // Magpul, the M134. The MP5K is the class's own starting
+            // shape: sixty percent of the stock damage and a light
+            // kick; the AK-47 kicks hard and vertical, the M4 sits
+            // between, the M134 kicks hard again and carries the
+            // horde's whole weight of rounds.
+            {0.11F, 30, 120, 2.5F, false, {29, 75, 18, 18}, 1.0F},
             {0.11F, 18, 72, 2.5F, false, {17, 45, 11, 11}, 0.5F},
             {0.1F, 24, 96, 2.5F, false, {29, 75, 18, 18}, 2.0F},
             {0.0917F, 32, 128, 2.5F, false, {35, 90, 22, 22}, 1.0F},
