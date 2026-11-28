@@ -4131,6 +4131,7 @@ struct Server::Impl {
             if (!map.solid(tx, ty, spade_z)) return true;   // the field has not caught up yet
             if (core_column_cell(tx, ty, spade_z)) return true;
             std::vector<Cell> removed;
+            bool took = false;   // a stroke that moved nothing is no work
             if (flight) {
                 // The staircase cut whole flights at a stroke: the
                 // chip that came one voxel at a time walked the dead
@@ -4176,7 +4177,9 @@ struct Server::Impl {
                             if (bz < 0) continue;
                             if (!map.solid(bx, by, bz)) continue;
                             if (core_column_cell(bx, by, bz)) continue;
-                            map.destroy_point(bx, by, bz, &removed);
+                            if (map.destroy_point(bx, by, bz, &removed) <= 0)
+                                continue;
+                            took = true;
                             ByteWriter bw;
                             bw.write_u8(static_cast<uint8_t>(PacketId::BlockAction));
                             bw.write_u8(static_cast<uint8_t>(p.id));
@@ -4196,7 +4199,9 @@ struct Server::Impl {
                         continue;   // a mate rides along only onto rock
                     if (core_column_cell(bx, by, spade_z))
                         continue;   // the core holds, mate or focus
-                    map.destroy_point(bx, by, spade_z, &removed);
+                    if (map.destroy_point(bx, by, spade_z, &removed) <= 0)
+                        continue;
+                    took = true;
                     ByteWriter bw;
                     bw.write_u8(static_cast<uint8_t>(PacketId::BlockAction));
                     bw.write_u8(static_cast<uint8_t>(p.id));
@@ -4207,10 +4212,18 @@ struct Server::Impl {
                     broadcast(bw, true);
                 }
             }
-            touched(removed, false);
-            p.spade_at = world_time;
-            show_swing(p, horde_cfg.dig_seconds);
-            return true;
+            if (took) {
+                touched(removed, false);
+                p.spade_at = world_time;
+                show_swing(p, horde_cfg.dig_seconds);
+                return true;
+            }
+            // Nothing came off: the stroke bit bedrock or a face the
+            // map had already spent, and work that moves nothing winds
+            // no clock and holds no gate - the walker stands back on
+            // the answers its legs owe, and the windows its stillness
+            // owes score again.
+            return false;
         }
         // A step, or a drop of honest air: walked, not spaded.
         p.input.mf = true;
@@ -4871,6 +4884,64 @@ struct Server::Impl {
         const int ly = fx - cx != 0 ? 1 : 0;
         bool stroked = false;
         std::vector<Cell> removed;
+        // THE CORE ABOVE THE FEET: the line this walker walks is flat,
+        // and a core stood over its head has no flat road to it - the
+        // tank under a pyramid paces the pocket of the foundations at
+        // its own level, tunnelling wall after wall that never rise a
+        // block toward the marker overhead, and the pack waits on it
+        // the while. So when the core's ground stands more than a
+        // jump over the feet and the face ahead is a run taller than
+        // the jump, the stroke climbs instead of flattening: the
+        // flight the dig walk's oath cuts into a wall - strips one
+        // higher a column in, their treads the mass below - goes in
+        // entrance-first, over the crest of whatever it meets, and
+        // the crest it tops out at is the road on, for the line is
+        // aimed at the core and the core is up. A face the jump
+        // could take keeps the flat road it always had: a stair of
+        // one comes down, and a gentle slope is walked, not canyoned
+        // a flight a stroke.
+        const bool core_above =
+            fz + 1 - core_ground_z > horde::Config::kWalkClimb;
+        int climb = 0;
+        if (core_above && foot) {
+            int z0 = fz - 1;
+            while (z0 > 0 && map.solid(fx, fy, z0 - 1)) --z0;
+            climb = fz - z0 + 1;
+        }
+        if (climb > horde::Config::kWalkClimb) {
+            // The flight: the same strips and the same lane the oath
+            // cuts, and the same guards - the core holds every cell of
+            // its column, and a voxel that did not come off tells no
+            // lie to the wire and winds no clock.
+            const int gx = fx - cx, gy = fy - cy;
+            for (int i = 0; i < kDigFlightDepth; ++i) {
+                const int sx = fx + gx * i;
+                const int sy = fy + gy * i;
+                for (int j = -1 - kDigLaneMargin; j <= 1 + kDigLaneMargin;
+                     ++j) {
+                    const int bx = sx + lx * j;
+                    const int by = sy + ly * j;
+                    for (int k = 0; k < horde::Config::kStandHead + 2; ++k) {
+                        const int bz = fz - i - k;
+                        if (bz < 0) continue;
+                        if (!map.solid(bx, by, bz)) continue;
+                        if (core_column_cell(bx, by, bz)) continue;
+                        if (map.destroy_point(bx, by, bz, &removed) <= 0)
+                            continue;
+                        ByteWriter bw;
+                        bw.write_u8(static_cast<uint8_t>(
+                            PacketId::BlockAction));
+                        bw.write_u8(static_cast<uint8_t>(p.id));
+                        bw.write_u8(static_cast<uint8_t>(kDestroyBlock));
+                        bw.write_i32(bx);
+                        bw.write_i32(by);
+                        bw.write_i32(bz);
+                        broadcast(bw, true);
+                        stroked = true;
+                    }
+                }
+            }
+        } else {
         // The cut stands four high over the ground it walks, three
         // mates wide: its own way through, and what the wave behind
         // it makes of the breach is the business of the wave. The
@@ -4881,7 +4952,8 @@ struct Server::Impl {
             for (int z = fz - 3; z <= fz; ++z) {
                 if (!map.solid(bx, by, z)) continue;
                 if (core_column_cell(bx, by, z)) continue;
-                map.destroy_point(bx, by, z, &removed);
+                if (map.destroy_point(bx, by, z, &removed) <= 0)
+                    continue;
                 ByteWriter bw;
                 bw.write_u8(static_cast<uint8_t>(PacketId::BlockAction));
                 bw.write_u8(static_cast<uint8_t>(p.id));
@@ -4892,6 +4964,7 @@ struct Server::Impl {
                 broadcast(bw, true);
                 stroked = true;
             }
+        }
         }
         if (stroked) {
             touched(removed, false);
@@ -5522,10 +5595,16 @@ struct Server::Impl {
                 // the mercy rides the road to the core: a hunter
                 // wedged on walking ground rides it like any walker,
                 // and only the stands the hunt itself designs stay
-                // off it - the breaker walking with the horde rides
-                // it, the breaker digging its line carves on its own
-                // clock
-                !hunts_on_own && !breaker_digs)
+                // off it. The breaker rides it too, once every window
+                // it owns has run out: a carver at its face lands a
+                // stroke every breaker_stroke and refreshes its own
+                // clock, so no stuck watch of this length ever reads
+                // it pinned, where the breaker these windows have
+                // caught has spent its licence, its watch and its
+                // line whole - the digging line's own pace keeps the
+                // carver carving, and the mercy keeps the caught one
+                // moving.
+                !hunts_on_own)
                 teleport_pinned(p);
         }
     }
