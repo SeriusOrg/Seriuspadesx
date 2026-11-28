@@ -436,7 +436,18 @@ void Horde::flood(std::vector<int32_t>& dist, int block_x, int block_y,
                     } else if (dz < -Config::kWalkClimb) {
                         nd += Config::kDigPenalty * (-dz - Config::kWalkClimb);
                     } else {
-                        nd += Config::kLevelShy * (dz < 0 ? -dz : dz);
+                        // THE STAIR TO THE MARKER IS FREE: a map that
+                        // names its core's layer owes the one block of
+                        // rise under that layer a level crossing - the
+                        // spade reads the stair to its marker at the
+                        // flat price, so the steps a map lays to it
+                        // outbid the gallery under them and the pack
+                        // keeps to a way it can walk back down.
+                        int lvl = Config::kLevelShy * (dz < 0 ? -dz : dz);
+                        if ((dz == -1 || dz == 1) && cfg_.core_top_z >= 0 &&
+                            z + (dz > 0 ? dz : 0) >= cfg_.core_top_z)
+                            lvl = 0;
+                        nd += lvl;
                     }
                 } else {
                     // Reversible: what the legs take down they take back up.
@@ -447,7 +458,17 @@ void Horde::flood(std::vector<int32_t>& dist, int block_x, int block_y,
                     // crossed only where it is the crossing - the pack that
                     // walks one floor is one pack, where a march that rolls
                     // up and down every ripple comes apart on them.
-                    nd += Config::kLevelShy * (dz < 0 ? -dz : dz);
+                    // THE STAIR TO THE MARKER IS FREE on the legs' side
+                    // too: where a map names its core's layer the one
+                    // block of rise under it is a level crossing, so
+                    // both walks read the same stair the same way and
+                    // the pack the legs walk stays the pack the spade
+                    // would walk.
+                    int lvl = Config::kLevelShy * (dz < 0 ? -dz : dz);
+                    if ((dz == -1 || dz == 1) && cfg_.core_top_z >= 0 &&
+                        z + (dz > 0 ? dz : 0) >= cfg_.core_top_z)
+                        lvl = 0;
+                    nd += lvl;
                     // The tall tread is one crossing but a whole arc: the
                     // jump a climb of kWalkClimb rides pays kJumpShy steps
                     // over its blocks, so the stair of one beats the stair

@@ -4276,7 +4276,14 @@ struct Server::Impl {
         // the advice names with - the legs' trace dies where the legs
         // do, and a head pinned is exactly there. No trace, no mercy.
         std::vector<horde::RouteCell> route;
-        if (!horde->trace_dig(cx, cy, route)) {
+        // The road must also run long enough to serve: a trace of a
+        // few treads hands the pack nothing - the head pinned a stride
+        // under the marker reads a road two treads long, and no mercy
+        // rides it. Too short carries the same weight as none at all:
+        // the ring takes both.
+        const bool road_home = horde->trace_dig(cx, cy, route) &&
+            route.size() > static_cast<size_t>(kTeleportAhead);
+        if (!road_home) {
             // The probe: a head owed the road learns that the spade walk
             // holds no road home from where it stands - the one reading
             // a stuck map wants first.

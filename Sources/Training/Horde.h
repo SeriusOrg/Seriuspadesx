@@ -22,7 +22,11 @@
 // out, the dig watch run down - so the dead scale a wall only when their
 // own legs fail them at it. The legs' own walk keeps its
 // crossings reversible - a step of kWalkClimb up or down is a jump, and
-// anything more is a wall. The walk also keeps to the open: a cell hedged by a
+// anything more is a wall. And on a map that names its core's layer the
+// stair of one block rising from a floor that layer tops is read as
+// level outright, the marker's own stair free - so the steps a map lays
+// to its core outbid any gallery under them. The walk also keeps to the
+// open: a cell hedged by a
 // wall on either side of the step is priced dearer than one with a
 // shoulder's room both ways, so a way the legs could hug against a wall -
 // where a walker jams on its corner - is walked only where the map leaves
@@ -202,6 +206,8 @@ struct Config {
     // the dig walk runs, the spade's own: it takes what the legs refuse -
     // a fall may pour up to kFall, and a climb beyond the jump and a
     // drop beyond it are each crossed at kDigPenalty steps a block -
+    // and the stair of one rising toward the core's named layer is a
+    // level crossing outright, the marker's stair free -
     // what pours off a ledge does not walk back up it, and a hollow
     // under a floor stops outbidding the road around - priced at the
     // balance phase's own
