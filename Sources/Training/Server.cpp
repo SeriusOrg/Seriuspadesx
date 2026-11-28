@@ -342,6 +342,14 @@ constexpr float kPrintAside = 0.5f;
 // hop and then the vault, for a wall behind a heel still gives way.
 constexpr float kHeelSight = 3.0f;
 
+// The pin's own reach: the stuck clock holds its word while the
+// walker stays inside this of the place it was pinned at, and
+// unwinds only for one that truly walks out of it - the fling's
+// throw and the walk back to the face it presses both stay inside
+// it, and a walker on its way somewhere leaves it within a window
+// or two of honest walking.
+constexpr float kStuckRadius = 6.0f;
+
 // The number of the next heel print: from one, so a zero marks an empty
 // slot and never a print. The count outlives every walk the world keeps.
 uint32_t heel_stamp() {
@@ -661,6 +669,12 @@ struct Player {
     // When it stopped making progress: a stuck one jumps for a way out;
     // the spade comes out only where the dig walk says it pays.
     double stuck_at = -1.0;
+    // The place the stuck clock was armed at: the pin itself, that the
+    // clock holds its word against the bounce of its own rescue - the
+    // fling throws the pinned clear of the face it presses and it
+    // walks back, and movement alone is no answer to a pin (see
+    // kStuckRadius and the unstick below).
+    Vec3 stuck_ref{};
     // The walk's distance read at its feet, kept window by window: the
     // moving-stuck's tell. The score is the legs' read where the legs
     // lead, and the spade walk's own where they fall silent and the
@@ -1896,6 +1910,8 @@ struct Server::Impl {
             p.net_input = 0;
             p.swing_shown = false;
             p.stuck_at = -1.0;
+            p.stuck_ref = p.body.pos;
+            p.spade_at = -1e9;   // a fresh rise owes no workgate
             p.foot_dist = -1;
             p.stall_windows = 0;
             p.dig_watch_at = -1.0;
@@ -4126,7 +4142,14 @@ struct Server::Impl {
         const int ly = along_x ? 1 : 0;
         if (spade_z >= 0) {
             p.input.mf = false;   // it works standing, not pressed at its wall
-            if (p.ahead_id >= 0) return true;   // the line waits on its head
+            // The line waits on its head - save the heel the line
+            // has marooned: a follower pinned on a clock of its
+            // own, its face one the line never opened for it,
+            // swings the spade the head never swung for it. The
+            // packed heel never reaches this, held within the
+            // sight of its ahead as it is, and a follower on
+            // walking ground draws no licence that reaches the stroke.
+            if (p.ahead_id >= 0 && p.stuck_at < 0.0) return true;
             if (world_time < p.spade_at + horde_cfg.dig_seconds) return true;
             if (!map.solid(tx, ty, spade_z)) return true;   // the field has not caught up yet
             if (core_column_cell(tx, ty, spade_z)) return true;
@@ -5411,6 +5434,26 @@ struct Server::Impl {
                                 std::fabs(p.body.pos.y - p.walk_ref.y);
             p.walk_ref = p.body.pos;
             p.walk_ref_at = world_time;
+            // A pin is a place, not a pace. The window once read any
+            // movement as the answer to one, but the fling of the
+            // pinned is the unstick's own doing: thrown clear of
+            // the face it presses, the walker lands a stride or
+            // three off and walks back, moving a window's worth in
+            // every window - and the clock that read that as an
+            // escape never once ran to the licence, the disband or
+            // the mercy it owes. The paper walk is no plainer an
+            // answer: a crossing the legs cannot make reads its
+            // landing the cheaper all the while, and a bounce that
+            // lands on those numbers is a yo-yo the windows
+            // already count. So the clock keeps the place it was
+            // armed at, and holds its word while the walker stays
+            // inside kStuckRadius of it; only a walker that walks
+            // out of the pin's reach is released, the clock unwound.
+            if (p.stuck_at >= 0.0) {
+                const float sdx = std::fabs(p.body.pos.x - p.stuck_ref.x) +
+                                  std::fabs(p.body.pos.y - p.stuck_ref.y);
+                if (sdx > kStuckRadius) p.stuck_at = -1.0;
+            }
             const int fd =
                 p.body.airborne ? -1 : horde->distance(cx, cy, fz);
             // The score off the field that leads the walker: the legs read
@@ -5567,7 +5610,10 @@ struct Server::Impl {
                         }
                     }
                 }
-                if (p.stuck_at < 0.0) p.stuck_at = world_time;
+                if (p.stuck_at < 0.0) {
+                    p.stuck_at = world_time;
+                    p.stuck_ref = p.body.pos;   // the pin itself
+                }
                 // The fling. The reading crosses steps two blocks tall at
                 // the price of a jump, and a jump alone was never going to
                 // clear one pressed against its face - the hop rises a
@@ -5593,8 +5639,40 @@ struct Server::Impl {
                     flung = true;
                 }
                 if (!flung) p.input.jump = true;
-            } else {
-                p.stuck_at = -1.0;
+            }
+            // The moving window owes the stuck clock no answer of its
+            // own any more: the pin's reach above unwinds it or holds
+            // it - and the fling's own throw is movement too.
+            // A heel the windows have caught as long as the mercy
+            // waits on a head hands its line over. The line waits on
+            // its head while the head has a way to give it: a head at
+            // work on a face holds the line whole, for the breach it
+            // opens is the line's own road. But a head gone on -
+            // walking free beyond a crossing its heel could not
+            // make - maroons it at a face the line never opened for
+            // it: no licence a follower may draw, no mercy a
+            // follower may ride, and the shelving sees the packed
+            // heel to none of the clocks at all. Past the mercy's
+            // own patience, and only where the head's spade has
+            // been quiet as long, the heel hands the line over and
+            // stands a head itself: the licences and the mercy are
+            // its to draw, and the breach it opens pours the line
+            // behind it through.
+            if (p.ahead_id >= 0 && p.stuck_at >= 0.0 &&
+                world_time - p.stuck_at >= kStuckTeleport &&
+                !hunts_on_own) {
+                Player* const gone_ahead =
+                    players[static_cast<size_t>(p.ahead_id)].get();
+                if (!gone_ahead || !gone_ahead->zombie ||
+                    !gone_ahead->alive ||
+                    world_time - gone_ahead->spade_at >=
+                        kStuckTeleport) {
+                    hand_pack_over(p);
+                    // A fresh patience of its own: the licence first,
+                    // the mercy only if the work cannot serve.
+                    p.stuck_at = world_time;
+                    p.stuck_ref = p.body.pos;
+                }
             }
             // The last resort, asked only after the walk's own answers
             // have all failed the head: the pinned line rides its road
@@ -5612,7 +5690,13 @@ struct Server::Impl {
                 // caught has spent its licence, its watch and its
                 // line whole - the digging line's own pace keeps the
                 // carver carving, and the mercy keeps the caught one
-                // moving.
+                // moving. The work gate below says it in clock
+                // terms: a stroke that moved blocks has landed within
+                // the mercy's own patience, and a spade eating a wall
+                // owes the mercy nothing - only a walker whose work
+                // has gone silent, no face to stand against or none
+                // its spade can spend, rides the road down.
+                world_time - p.spade_at >= kStuckTeleport &&
                 !hunts_on_own)
                 teleport_pinned(p);
         }
