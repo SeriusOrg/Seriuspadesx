@@ -4170,6 +4170,9 @@ struct Server::Impl {
             if (world_time < p.spade_at + horde_cfg.dig_seconds) return true;
             if (!map.solid(tx, ty, spade_z)) return true;   // the field has not caught up yet
             if (core_column_cell(tx, ty, spade_z)) return true;
+            // The marker's ground holds the marker's word: the
+            // zone takes no spade, the dead walk the last strides.
+            if (core_zone_cell(tx, ty, spade_z)) return true;
             std::vector<Cell> removed;
             bool took = false;   // a stroke that moved nothing is no work
             if (flight) {
@@ -4217,6 +4220,7 @@ struct Server::Impl {
                             if (bz < 0) continue;
                             if (!map.solid(bx, by, bz)) continue;
                             if (core_column_cell(bx, by, bz)) continue;
+                            if (core_zone_cell(bx, by, bz)) continue;
                             if (map.destroy_point(bx, by, bz, &removed) <= 0)
                                 continue;
                             took = true;
@@ -4239,6 +4243,8 @@ struct Server::Impl {
                         continue;   // a mate rides along only onto rock
                     if (core_column_cell(bx, by, spade_z))
                         continue;   // the core holds, mate or focus
+                    if (core_zone_cell(bx, by, spade_z))
+                        continue;   // its ground holds with it
                     if (map.destroy_point(bx, by, spade_z, &removed) <= 0)
                         continue;
                     took = true;
@@ -4853,6 +4859,7 @@ struct Server::Impl {
                     const int Z = bz + dz;
                     if (!map.solid(X, Y, Z)) continue;
                     if (core_column_cell(X, Y, Z)) continue;
+                    if (core_zone_cell(X, Y, Z)) continue;
                     map.destroy_point(X, Y, Z, &removed);
                     ByteWriter bw;
                     bw.write_u8(static_cast<uint8_t>(PacketId::BlockAction));
@@ -4982,6 +4989,7 @@ struct Server::Impl {
                         if (bz < 0) continue;
                         if (!map.solid(bx, by, bz)) continue;
                         if (core_column_cell(bx, by, bz)) continue;
+                        if (core_zone_cell(bx, by, bz)) continue;
                         if (map.destroy_point(bx, by, bz, &removed) <= 0)
                             continue;
                         ByteWriter bw;
@@ -5008,6 +5016,7 @@ struct Server::Impl {
             for (int z = fz - 3; z <= fz; ++z) {
                 if (!map.solid(bx, by, z)) continue;
                 if (core_column_cell(bx, by, z)) continue;
+                if (core_zone_cell(bx, by, z)) continue;
                 if (map.destroy_point(bx, by, z, &removed) <= 0)
                     continue;
                 ByteWriter bw;
@@ -7038,6 +7047,10 @@ struct Server::Impl {
                     // never rebuilt, so the pool paints it but takes
                     // nothing of it, the paint owed back at the melt.
                     if (core_column_cell(cx, cy, cz)) continue;
+                    // The marker's ground is off the acid as it is
+                    // off the spade: no paint, no melt, the sphere
+                    // the dead walk the last strides of.
+                    if (core_zone_cell(cx, cy, cz)) continue;
                     pool.push_back(Cell{cx, cy, cz});
                 }
         if (pool.empty()) return;
@@ -7137,6 +7150,7 @@ struct Server::Impl {
             // or the water under it holds its crumble.
             if (m.z >= 62) continue;
             if (core_column_cell(m.x, m.y, m.z)) continue;
+            if (core_zone_cell(m.x, m.y, m.z)) continue;
             ByteWriter bw;
             bw.write_u8(static_cast<uint8_t>(PacketId::BlockAction));
             bw.write_u8(kAcidBlockId);
