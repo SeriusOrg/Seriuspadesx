@@ -357,13 +357,18 @@ void write_store(ByteWriter& bw, const StoreState& state) {
     // The prices the purse pays, one pair a card: the host can reprice
     // the catalogue in its own towerdefense.toml, so the wire says what
     // the server charges and the shelf can never show another number.
-    // An older recording carries none of it, and the reader leaves the
-    // prices unsaid rather than refuse the word.
+    // The count rides even when it is none, that the word may never be
+    // read two ways - and the core's own cell rides behind it, that
+    // the client may hold the marker's ground against its predictions.
     bw.write_u8(state.price_count);
     for (uint8_t k = 0; k < state.price_count; ++k) {
         bw.write_u8(state.priced[k].index);
         bw.write_u16(state.priced[k].price);
     }
+    bw.write_u16(state.core_x);
+    bw.write_u16(state.core_y);
+    bw.write_u8(state.core_top_z);
+    bw.write_u8(state.core_ground_z);
 }
 
 bool read_store(ByteReader& br, StoreState& state) {
@@ -380,8 +385,9 @@ bool read_store(ByteReader& br, StoreState& state) {
 bool read_store_body(ByteReader& br, StoreState& state) {
     // zedcred, wave, phase, core hp/max, gun, grenades, blocks, then the
     // count: twelve bytes, and every one of them asked for before it is
-    // read rather than read and hoped. Twelve bytes with no pairs, so a
-    // fresh player who owns nothing is a Store of twelve, and it is the
+    // read rather than read and hoped. Twelve bytes with no pairs, the
+    // prices' own count and the core's own cell behind them, so a fresh
+    // player who owns nothing is a Store of twenty, and it is the
     // first thing a new world ever says.
     if (!br.can_read(12)) return false;
     const uint16_t zedcred = br.read_u16();
@@ -411,20 +417,25 @@ bool read_store_body(ByteReader& br, StoreState& state) {
         state.owned[k].index = br.read_u8();
         state.owned[k].level = br.read_u8();
     }
-    // The prices, when the word says them: an older recording carries
-    // none, and a reader that finds nothing after the pairs leaves the
-    // prices unsaid - the shelf then falls back to its own words. What
-    // it does find it asks for whole, the same discipline as the pairs.
-    if (br.can_read(1)) {
-        const int prices = br.read_u8();
-        if (prices > 64) return false;
-        if (!br.can_read(3 * static_cast<size_t>(prices))) return false;
-        state.price_count = static_cast<uint8_t>(prices);
-        for (int k = 0; k < prices; ++k) {
-            state.priced[k].index = br.read_u8();
-            state.priced[k].price = br.read_u16();
-        }
+    // The prices and the core's cell, asked for whole the same
+    // discipline as the pairs: the word is one shape, and a body that
+    // ends before any of it is refused rather than guessed at. The
+    // price count rides even when it is none; a ground of zero names
+    // a world with no core to guard.
+    if (!br.can_read(1)) return false;
+    const int prices = br.read_u8();
+    if (prices > 64) return false;
+    if (!br.can_read(3 * static_cast<size_t>(prices))) return false;
+    state.price_count = static_cast<uint8_t>(prices);
+    for (int k = 0; k < prices; ++k) {
+        state.priced[k].index = br.read_u8();
+        state.priced[k].price = br.read_u16();
     }
+    if (!br.can_read(6)) return false;
+    state.core_x = br.read_u16();
+    state.core_y = br.read_u16();
+    state.core_top_z = br.read_u8();
+    state.core_ground_z = br.read_u8();
     return true;
 }
 

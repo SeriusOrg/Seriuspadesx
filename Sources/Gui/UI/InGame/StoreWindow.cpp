@@ -541,9 +541,8 @@ namespace spades {
 					// cards in its own towerdefense.toml and the wire says
 					// what the purse pays, so the shelf never shows a
 					// number the buy does not charge. The pak's own price
-					// stands for a wire that said none - an old recording,
-					// or no server at all - and the catalogue's is the
-					// last word.
+					// stands for a wire that said none of it, and the
+					// catalogue's is the last word.
 					shown_price = price >= 0
 					                ? price
 					                : (price_override >= 0 ? price_override

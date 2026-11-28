@@ -1407,6 +1407,13 @@ namespace spades {
 							// grenade unmakes holds above the bedrock.
 							if (pos.z + z >= GetWorld()->GetMap()->GroundDepth())
 								continue;
+							// The marker's ground is never taken either: the
+							// server holds the sphere around the core off every
+							// blast, and the client's own prediction holds the
+							// same word.
+							if (client->GetStoreState().core_zone(
+							      pos.x + x, pos.y + y, pos.z + z))
+								continue;
 							cells.push_back(MakeIntVector3(pos.x + x, pos.y + y, pos.z + z));
 						}
 						GetWorld()->DestroyBlock(cells);

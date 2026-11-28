@@ -50,14 +50,19 @@ namespace client {
 			state.owned[k].level = s.owned[k].level;
 		}
 		state.ownedCount = static_cast<std::uint8_t>(kept);
-		// The prices the server charges, when the word carries them: an
-		// older recording says none, and the shelf keeps its own words.
+		// The prices the server charges, and the core's own cell:
+		// the word is one shape, and a body that ends before any of
+		// it is refused rather than guessed at.
 		const std::size_t priced = s.price_count;
 		for (std::size_t k = 0; k < priced; ++k) {
 			state.priced[k].index = s.priced[k].index;
 			state.priced[k].price = s.priced[k].price;
 		}
 		state.priceCount = static_cast<std::uint8_t>(priced);
+		state.coreX = s.core_x;
+		state.coreY = s.core_y;
+		state.coreTopZ = s.core_top_z;
+		state.coreGroundZ = s.core_ground_z;
 		state.received = true;
 		return true;
 	}

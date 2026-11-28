@@ -42,6 +42,28 @@ struct StoreState {
 		return -1;
 	}
 
+	/** The core's own cell, as the store's word names it: a ground of
+	 * zero is a world with no core to guard. */
+	std::uint16_t coreX = 0;
+	std::uint16_t coreY = 0;
+	std::uint8_t coreTopZ = 0;
+	std::uint8_t coreGroundZ = 0;
+
+	/** The marker's ground: the sphere of five the server holds off
+	 * every hand - the same zone the server's kCoreZoneRadius draws.
+	 * True only in a Tower Defense world whose word named the core,
+	 * and only for a cell the server would refuse to spend. */
+	bool core_zone(int x, int y, int z) const {
+		if (coreGroundZ == 0) return false;
+		const int dx = x - coreX;
+		const int dy = y - coreY;
+		int dz = 0;
+		if (z < coreTopZ) dz = coreTopZ - z;
+		const int bottom = coreGroundZ - 1;
+		if (z > bottom) dz = z - bottom;
+		return dx * dx + dy * dy + dz * dz <= 25;
+	}
+
 	/** Whether a server that speaks the store has been heard from at all. */
 	bool received = false;
 

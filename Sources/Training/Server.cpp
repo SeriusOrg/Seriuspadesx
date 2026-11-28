@@ -3143,6 +3143,13 @@ struct Server::Impl {
                 ++q;
             }
             s.price_count = static_cast<uint8_t>(q);
+            // The core's own cell: the sphere the server holds off
+            // every hand is drawn from these four, and the client
+            // holds its own predictions to them.
+            s.core_x = static_cast<uint16_t>(horde_cfg.core_x);
+            s.core_y = static_cast<uint16_t>(horde_cfg.core_y);
+            s.core_top_z = static_cast<uint8_t>(core_top_z);
+            s.core_ground_z = static_cast<uint8_t>(core_ground_z);
         }
         const bool again = world_time >= store_resend_next;
         if (again) store_resend_next = world_time + kTrailResend;

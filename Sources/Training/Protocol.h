@@ -392,6 +392,9 @@ struct StoreState {
             if (priced[k].index != o.priced[k].index ||
                 priced[k].price != o.priced[k].price)
                 return false;
+        if (core_x != o.core_x || core_y != o.core_y ||
+            core_top_z != o.core_top_z ||
+            core_ground_z != o.core_ground_z) return false;
         return true;
     }
     uint16_t zedcred = 0;      // the player's Zedcred purse (capped 65535)
@@ -410,6 +413,10 @@ struct StoreState {
     };
     uint8_t price_count = 0;   // number of priced pairs following
     Priced priced[64] = {};    // capped to 64, which exceeds the catalogue
+    uint16_t core_x = 0;       // the core's own cell, that the client
+    uint16_t core_y = 0;       // may hold its ground against its own
+    uint8_t core_top_z = 0;    // predictions: the column's top layer,
+    uint8_t core_ground_z = 0; // and the ground it stands on (0 = none)
 };
 // The whole packet, id included. `count` says how many of `owned` are real.
 void write_store(ByteWriter& bw, const StoreState& state);
