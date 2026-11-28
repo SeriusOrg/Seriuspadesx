@@ -354,6 +354,16 @@ void write_store(ByteWriter& bw, const StoreState& state) {
         bw.write_u8(state.owned[k].index);
         bw.write_u8(state.owned[k].level);
     }
+    // The prices the purse pays, one pair a card: the host can reprice
+    // the catalogue in its own towerdefense.toml, so the wire says what
+    // the server charges and the shelf can never show another number.
+    // An older recording carries none of it, and the reader leaves the
+    // prices unsaid rather than refuse the word.
+    bw.write_u8(state.price_count);
+    for (uint8_t k = 0; k < state.price_count; ++k) {
+        bw.write_u8(state.priced[k].index);
+        bw.write_u16(state.priced[k].price);
+    }
 }
 
 bool read_store(ByteReader& br, StoreState& state) {
@@ -400,6 +410,20 @@ bool read_store_body(ByteReader& br, StoreState& state) {
     for (int k = 0; k < count; ++k) {
         state.owned[k].index = br.read_u8();
         state.owned[k].level = br.read_u8();
+    }
+    // The prices, when the word says them: an older recording carries
+    // none, and a reader that finds nothing after the pairs leaves the
+    // prices unsaid - the shelf then falls back to its own words. What
+    // it does find it asks for whole, the same discipline as the pairs.
+    if (br.can_read(1)) {
+        const int prices = br.read_u8();
+        if (prices > 64) return false;
+        if (!br.can_read(3 * static_cast<size_t>(prices))) return false;
+        state.price_count = static_cast<uint8_t>(prices);
+        for (int k = 0; k < prices; ++k) {
+            state.priced[k].index = br.read_u8();
+            state.priced[k].price = br.read_u16();
+        }
     }
     return true;
 }

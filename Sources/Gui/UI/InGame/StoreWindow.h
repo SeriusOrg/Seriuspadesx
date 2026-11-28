@@ -40,7 +40,9 @@ namespace spades {
 		/** One card of the store's own words: one line of Store/items.txt
 		 * in the Tower Defense pak, "sku | name | description | price".
 		 * What the file does not say falls back to the catalogue's own
-		 * words, so a missing file leaves the store standing. */
+		 * words, and the price stands only for a wire that said none -
+		 * the server's word is what the shelf charges - so a missing
+		 * file leaves the store standing. */
 		struct StoreText {
 			std::string name;
 			std::string detail;

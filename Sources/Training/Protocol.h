@@ -387,6 +387,11 @@ struct StoreState {
             if (owned[k].index != o.owned[k].index ||
                 owned[k].level != o.owned[k].level)
                 return false;
+        if (price_count != o.price_count) return false;
+        for (uint8_t k = 0; k < price_count; ++k)
+            if (priced[k].index != o.priced[k].index ||
+                priced[k].price != o.priced[k].price)
+                return false;
         return true;
     }
     uint16_t zedcred = 0;      // the player's Zedcred purse (capped 65535)
@@ -399,6 +404,12 @@ struct StoreState {
     uint8_t blocks = 0;        // building blocks carried (capped at 50)
     uint8_t owned_count = 0;   // number of owned level pairs following
     Owned owned[64] = {};      // capped to 64, which exceeds the catalogue
+    struct Priced {
+        uint8_t index = 0;     // index into StoreCatalog::kItems
+        uint16_t price = 0;    // the Zedcreds the server charges it
+    };
+    uint8_t price_count = 0;   // number of priced pairs following
+    Priced priced[64] = {};    // capped to 64, which exceeds the catalogue
 };
 // The whole packet, id included. `count` says how many of `owned` are real.
 void write_store(ByteWriter& bw, const StoreState& state);

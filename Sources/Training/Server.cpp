@@ -3130,6 +3130,19 @@ struct Server::Impl {
                     ++n;
                 }
             s.owned_count = static_cast<uint8_t>(n);
+            // The purse's own truth, one pair a card: the TOML's word,
+            // the txt's, or the catalogue's - what the wire says is
+            // what the buy charges, and the shelf reads the same
+            // number the host wrote.
+            size_t q = 0;
+            for (size_t k = 0; k < store::kItemCount && q < 64; ++k) {
+                const int ask = store_price(static_cast<int>(k));
+                s.priced[q].index = static_cast<uint8_t>(k);
+                s.priced[q].price = static_cast<uint16_t>(
+                    ask > 65535 ? 65535 : ask);
+                ++q;
+            }
+            s.price_count = static_cast<uint8_t>(q);
         }
         const bool again = world_time >= store_resend_next;
         if (again) store_resend_next = world_time + kTrailResend;

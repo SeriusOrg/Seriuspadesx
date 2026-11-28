@@ -217,6 +217,7 @@ namespace spades {
 				std::uint8_t level = 0;
 				int price = 0;
 				int price_override = -1;  // the pak's own word, when it says one
+				int shown_price = 0;      // the number the card stands at
 				std::uint16_t purse = 0;
 				// Another class's rung, seen and not bought: the card
 				// stands veiled at the foot of the shelf.
@@ -536,13 +537,20 @@ namespace spades {
 					level = lv;
 					price = pr;
 					purse = purse_;
-					// The pak's own price comes first, the catalogue's is the
-					// fallback: the wire carries none of them, so the card says
-					// what the shipped words say.
-					const int shown = price_override >= 0 ? price_override : price;
-					const std::string total = std::to_string(shown);
+					// The wire's price comes first: the host repriced the
+					// cards in its own towerdefense.toml and the wire says
+					// what the purse pays, so the shelf never shows a
+					// number the buy does not charge. The pak's own price
+					// stands for a wire that said none - an old recording,
+					// or no server at all - and the catalogue's is the
+					// last word.
+					shown_price = price >= 0
+					                ? price
+					                : (price_override >= 0 ? price_override
+					                                       : item->price);
+					const std::string total = std::to_string(shown_price);
 					const std::string coin = training::store::kCurrencyPlural;
-					priceText = shown > 0 ? total + " " + coin : "Free";
+					priceText = shown_price > 0 ? total + " " + coin : "Free";
 				}
 
 				int GetItemIndex() const {
@@ -559,7 +567,7 @@ namespace spades {
 						  level >= item->max_level;
 					const bool owned = maxed;
 					const bool poor =
-					  !owned && !greyed && price > 0 && purse < price;
+					  !owned && !greyed && shown_price > 0 && purse < shown_price;
 					const auto colour =
 					  CardColour(hover, pressed && hover, greyed, owned, poor);
 					SetColorNP(r, colour);
@@ -1089,14 +1097,14 @@ namespace spades {
 						const int index = storeCard->GetItemIndex();
 						if (index < 0)
 							continue;
-						const training::store::Item& item = training::store::kItems[index];
 						const std::uint8_t level = state.level_of(index);
-						std::uint16_t price = item.price;
-						// The catalogue's price. The host's towerdefense.toml can
-						// reprice a card on its own side, and the shipped table
-						// matches this one, but the wire carries no prices, so a
-						// host that edits them is seen only in what it charges.
-						storeCard->SetState(level, price, state.zedcreds);
+						// The wire's price is the purse's own truth: the host's
+						// towerdefense.toml repriced the cards on the server, and
+						// the store's word now says what it charges. A wire that
+						// said none falls back to the pak's own word, and then to
+						// the catalogue's.
+						const int asked = state.price_of(index);
+						storeCard->SetState(level, asked, state.zedcreds);
 					}
 				}
 			}

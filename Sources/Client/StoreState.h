@@ -26,6 +26,22 @@ struct StoreState {
 	};
 	Owned owned[64] = {};
 
+	std::uint8_t priceCount = 0;
+	struct Priced {
+		std::uint8_t index = 0;
+		std::uint16_t price = 0;
+	} priced[64] = {};
+
+	/** The price the server charges an item, by its StoreCatalog index,
+	 * or -1 when the wire has said none of it and the shelf falls back
+	 * to its own words. */
+	std::int32_t price_of(int index) const {
+		for (std::uint8_t k = 0; k < priceCount; ++k)
+			if (priced[k].index == static_cast<std::uint8_t>(index))
+				return static_cast<std::int32_t>(priced[k].price);
+		return -1;
+	}
+
 	/** Whether a server that speaks the store has been heard from at all. */
 	bool received = false;
 
