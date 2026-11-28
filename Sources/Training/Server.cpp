@@ -4330,9 +4330,18 @@ struct Server::Impl {
                 " %d, %d", bx, by);
             return;
         }
+        // The road is measured in treads, not strides: a climb's treads
+        // stack over the stuck spot's own columns, and a mercy that
+        // measured the carry in strides would read every tread of a
+        // vertical road as a stride from where the pack stood - the pin
+        // under a pyramid's floor was exactly that, treads twelve deep
+        // in the way home and four cells from the wall, and no tread
+        // ever cleared the old stride's test, so the mercy that owed
+        // its carry carried nobody anywhere. kTeleportAhead treads down
+        // the way home is the progress the mercy rides, flat or
+        // climbing.
         for (size_t i = kTeleportAhead; i < route.size(); ++i) {
             const horde::RouteCell& at = route[i];
-            if (std::abs(at.x - cx) + std::abs(at.y - cy) < 4) continue;
             const int zl = horde->stand_floor(at.x, at.y);
             if (zl < 0) continue;   // no legs-counted floor the born clear above
             // The whole line of it, link by link: whoever follows the

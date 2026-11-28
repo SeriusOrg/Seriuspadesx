@@ -15,8 +15,9 @@
 // gate an arch leaves standing closes a town. The dead walk, and they dig
 // only when their legs fail them at it: besides the legs' own reversible
 // walk there is a second field, the spade's walk - the falls up to kFall
-// come back into it and a climb beyond the jump is crossed at kDigPenalty
-// steps a block, the time its spade takes that block off - and the spade's
+// come back into it, and a climb beyond the jump and a drop beyond it
+// are each crossed at kDigPenalty steps a block, the time its spade
+// takes that block off - and the spade's
 // way is consulted only on a licence of the pinned - the stuck clock run
 // out, the dig watch run down - so the dead scale a wall only when their
 // own legs fail them at it. The legs' own walk keeps its
@@ -199,8 +200,11 @@ struct Config {
     // it cannot lead them out of: the stairs, the ramps and the notches
     // are the way, and cliffs and pits wall both ways. Beside that walk
     // the dig walk runs, the spade's own: it takes what the legs refuse -
-    // a fall may pour up to kFall, and a climb beyond the jump is crossed
-    // at kDigPenalty steps a block, priced at the balance phase's own
+    // a fall may pour up to kFall, and a climb beyond the jump and a
+    // drop beyond it are each crossed at kDigPenalty steps a block -
+    // what pours off a ledge does not walk back up it, and a hollow
+    // under a floor stops outbidding the road around - priced at the
+    // balance phase's own
     // say - half the errand it once stood at, that a wall comes down the
     // sooner a wood of trunks and low folds racks its detour up. Rooms
     // without headroom stay unreachable even to the spade: the walk

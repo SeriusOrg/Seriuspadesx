@@ -13,8 +13,9 @@
 // legs is reversible - a step of two is a jump, up or down, and anything
 // more is a wall, for the legs alone cannot dig. But the dead carry a
 // spade, and beside the legs' walk a second field prices what the spade
-// could cross - a fall of up to kFall, a climb at kDigPenalty steps a
-// block - consulted only on the licences of the pinned: the stuck
+// could cross - a fall of up to kFall, a climb or a drop beyond the
+// jump at kDigPenalty steps a block - consulted only on the licences
+// of the pinned: the stuck
 // clock run out where the legs' walk is silent, the watch run down
 // where no ground is gained, so a wall is crossed only when the walk
 // has already failed the dead at it, and a sealed town still anchors

@@ -413,10 +413,26 @@ void Horde::flood(std::vector<int32_t>& dist, int block_x, int block_y,
                     // the longer errand. The steps the legs could take
                     // keep their own level-shy price, so the dig walk
                     // still prefers its flats and a pack on it stays one
-                    // pack.
+                    // pack. The drop beyond the jump pays the same as
+                    // the rise: see the branch below for the honesty.
                     if (dz > Config::kFall) continue;
                     if (dz > Config::kWalkClimb) {
-                        // the fall walks off freely: one way down
+                        // THE FALL PAYS ITS PASSAGE: what pours off a
+                        // ledge does not walk back up it, and where rock
+                        // stands between the two floors the spade opens
+                        // it the same way it takes a wall down. So the
+                        // drop beyond the jump is crossed at the climb's
+                        // own price a block, and the hollow a map sits
+                        // over - the pocket a pyramid keeps under its
+                        // floor - stops outbidding the honest road
+                        // around: a way in that read free was read as
+                        // the way, and the breakers it poured there
+                        // stood under the marker with no wall to work
+                        // and no road the mercy counts. A fall through
+                        // open air still costs the body nothing; the
+                        // price is the field's own honesty about the
+                        // way back.
+                        nd += Config::kDigPenalty * (dz - Config::kWalkClimb);
                     } else if (dz < -Config::kWalkClimb) {
                         nd += Config::kDigPenalty * (-dz - Config::kWalkClimb);
                     } else {
