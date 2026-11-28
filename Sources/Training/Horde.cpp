@@ -267,11 +267,20 @@ int Horde::stand_floor(int x, int y) const {
 // own: which floor a walker stands on is decided where it crosses, not
 // where it starts.
 void Horde::flood(std::vector<int32_t>& dist, int block_x, int block_y,
-                   bool dig, int seed_x, int seed_y) {
+                   bool dig, int seed_x, int seed_y,
+                   const std::vector<int32_t>* held) {
     dist.assign(static_cast<size_t>(kMapW) * kMapH * kSurfMax, kUnreachable);
+    // Whether a column is held out of this walk: the one ask's own
+    // column, or one of the many a line brings in its sorted set.
+    const auto held_out = [&](int x, int y) {
+        if (x == block_x && y == block_y) return true;
+        if (!held) return false;
+        return std::binary_search(held->begin(), held->end(),
+                                  static_cast<int32_t>(cell_index(x, y)));
+    };
     const int cx = cfg_.core_x, cy = cfg_.core_y;
     if (cx < 0 || cx >= kMapW || cy < 0 || cy >= kMapH) return;
-    if (block_x == cx && block_y == cy) return;
+    if (held_out(cx, cy)) return;
     static const int kDx[4] = {1, -1, 0, 0};
     static const int kDy[4] = {0, 0, 1, -1};
     using QE = std::pair<int32_t, int32_t>;  // (steps so far, state id)
@@ -285,7 +294,7 @@ void Horde::flood(std::vector<int32_t>& dist, int block_x, int block_y,
     // neighbourhood the horde only has to reach to bite.
     auto seed_one = [&](int x, int y, int k, int d) {
         if (x < 0 || x >= kMapW || y < 0 || y >= kMapH) return;
-        if (x == block_x && y == block_y) return;
+        if (held_out(x, y)) return;
         const size_t s = state(x, y, k);
         if (dist[s] == kUnreachable) {
             dist[s] = d;
@@ -385,7 +394,7 @@ void Horde::flood(std::vector<int32_t>& dist, int block_x, int block_y,
         for (int q = 0; q < 4; ++q) {
             const int nx = x + kDx[q], ny = y + kDy[q];
             if (nx < 0 || nx >= kMapW || ny < 0 || ny >= kMapH) continue;
-            if (nx == block_x && ny == block_y) continue;
+            if (held_out(nx, ny)) continue;
             const size_t ni = cell_index(nx, ny);
             const int n = surf_count(nx, ny);
             for (int m = 0; m < n; ++m) {
@@ -1050,25 +1059,51 @@ bool Horde::trace_dig(int x, int y, std::vector<RouteCell>& out) {
 
 // --- the veto ----------------------------------------------------------------
 
-// Two floods, one with the candidate column held out. The map is not touched
-// here: the candidate only hides that column from the walk. The walk the
-// zombies use is the same one the veto asks with, so the second flood - the
-// map as it stands - is written straight into the field, kept fresh by the
-// very question the veto came to ask (the same work the debounce would soon
-// do).
+// One flood, the candidate column held out. The map is not touched here:
+// the candidate only hides that column from the walk. The field the
+// zombies use is the debounce's to refresh, not the veto's: a veto that
+// walked it itself asked three floods a brick, and a server that goes
+// quiet over one read to the client as one gone for good. The fail-open
+// read below leans on that debounced field, then - a map sealed or
+// opened a breath ago is read a breath late, and the tower keeps its
+// own counsel either way.
 bool Horde::can_build(int x, int y, int z) {
     if (x < 0 || x >= kMapW || y < 0 || y >= kMapH) return true;
     if (z < 0 || z >= SolidMap::SIZE_Z) return true;
     std::vector<int32_t> with_block;
     flood(with_block, x, y, false);
-    flood(dist_, -1, -1, false);  // the walk's answer, not the veto's
-    flood(dig_dist_, -1, -1, true);   // the spade's kept in step with it
-    field_dirty_ = false;
     if (reach_spawn(with_block)) return true;
     // Fail open: sealed before this block too - the tower stands or falls on
     // its own, refusing nothing that changes nothing.
     if (!reach_spawn(dist_)) return true;
     // This block would have sealed the last way in.
+    return false;
+}
+
+// The line's own ask: every column held out together, one walk for the
+// whole line, where a brick a cell asked a walk each - a flank of
+// pyramid is fifty walks no client should wait out. Refused, the whole
+// line is: which brick of the many was the one that sealed the way is
+// not a question worth a walk a brick to answer, and a line that seals
+// between its bricks what none of them seals alone is caught here,
+// where the ask a cell never caught it.
+bool Horde::can_build_line(const std::vector<std::pair<int, int>>& columns) {
+    std::vector<int32_t> held;
+    held.reserve(columns.size());
+    for (const auto& c : columns) {
+        if (c.first < 0 || c.first >= kMapW ||
+            c.second < 0 || c.second >= kMapH)
+            return true;   // off the field: never the veto's to ask
+        held.push_back(static_cast<int32_t>(cell_index(c.first, c.second)));
+    }
+    std::sort(held.begin(), held.end());
+    held.erase(std::unique(held.begin(), held.end()), held.end());
+    if (held.empty()) return true;
+    std::vector<int32_t> with_line;
+    flood(with_line, -1, -1, false, -1, -1, &held);
+    if (reach_spawn(with_line)) return true;
+    // Fail open, as the one brick does.
+    if (!reach_spawn(dist_)) return true;
     return false;
 }
 

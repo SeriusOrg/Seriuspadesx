@@ -7618,10 +7618,22 @@ struct Server::Impl {
         if (!map.has_neighbors(a.x, a.y, a.z) || !map.has_neighbors(b.x, b.y, b.z)) return;
         const std::vector<Cell> pts = cube_line(a.x, a.y, a.z, b.x, b.y, b.z);
         if (pts.empty() || static_cast<int>(pts.size()) > p.blocks + kBuildTolerance) return;
+        // The veto asks once for the whole line, its columns together,
+        // where the old word asked a walk a cell: a long line was a
+        // stall the client's timeout read as a server gone quiet, and
+        // bricks that seal together what none seals alone slipped the
+        // ask a cell never caught.
+        std::vector<std::pair<int, int>> columns;
+        for (const Cell& c : pts)
+            if (!map.solid(c.x, c.y, c.z))
+                columns.emplace_back(c.x, c.y);
+        if (horde && !horde->can_build_line(columns)) {
+            system_chat("That line would seal the last way in.", p.id);
+            return;   // a refusal spends no block and builds no brick
+        }
         std::vector<Cell> built;
         for (const Cell& c : pts) {
             if (map.solid(c.x, c.y, c.z)) continue;
-            if (horde && !horde->can_build(c.x, c.y, c.z)) continue;   // the veto skips a cell
             if (!map.build_point(c.x, c.y, c.z, p.color | 0x7F000000u)) break;
             built.push_back(c);
         }

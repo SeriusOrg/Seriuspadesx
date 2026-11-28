@@ -50,6 +50,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <random>
+#include <utility>
 #include <vector>
 
 class SolidMap;
@@ -356,8 +357,19 @@ public:
     void restart(double now);
 
     // Whether a block at (x, y, z) may be built: false only when it would
-    // seal every route from a spawn corner to the core.
+    // seal every route from a spawn corner to the core. One walk asks the
+    // one column; the field itself is the debounce's to refresh, not the
+    // veto's - a veto that walked it itself asked three floods a brick,
+    // and a server that goes quiet over one read to the client as one
+    // gone for good.
     bool can_build(int x, int y, int z);
+    // The same question for a whole line of blocks at once, its columns
+    // given as (x, y) pairs: one walk holds them all out together, where
+    // a brick a cell asked a walk each - a flank of pyramid is fifty
+    // walks no client should wait out. Asked together, the line cannot
+    // slip past the veto what its bricks alone would pass: two that seal
+    // between them what neither seals alone are caught in the one ask.
+    bool can_build_line(const std::vector<std::pair<int, int>>& columns);
     // The map changed (built or destroyed): the field follows, debounced.
     void on_map_edited();
     // The core moved to a cell already standing there (its column built
@@ -523,7 +535,10 @@ private:
     bool box_clear(int x, int y, int z) const;
     bool reach_spawn(const std::vector<int32_t>& dist) const;
     void flood(std::vector<int32_t>& dist, int block_x, int block_y, bool dig,
-               int seed_x = -1, int seed_y = -1);
+               int seed_x = -1, int seed_y = -1,
+               // further columns held out of the walk together, as
+               // sorted cell indices: the line veto's one ask
+               const std::vector<int32_t>* held = nullptr);
     // The asked-for centres, dealt at the horde's birth and again the
     // moment each wave falls when roam_spawns is on: the corners'
     // quarters shuffle round the compass and each centre is drawn
