@@ -40,6 +40,7 @@
 #include "Block/ThirdPerson.as"
 #include "Block/View.as"
 #include "Grenade/ThirdPerson.as"
+#include "Grenade/RPG.as"
 #include "Grenade/View.as"
 #include "Rifle/ThirdPerson.as"
 #include "Rifle/View.as"

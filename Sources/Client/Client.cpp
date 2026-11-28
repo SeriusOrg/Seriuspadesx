@@ -1846,6 +1846,10 @@ namespace spades {
 			const training::tiers::SpadeSpec& sp =
 				training::tiers::kSpade[WeaponGameTierFor(3)];
 			p->SetSpadeScales(sp.range, sp.chip);
+			// The RPG dress on the grenade tool turns the tool's press
+			// and release into a rocket's launch and its flight's aim:
+			// the player owns a word for it whenever the dress is worn.
+			p->SetRocketLauncher(WeaponDressTierFor(4) >= 1);
 		}
 
 		// A file a dressed gun loads: the dress's own when its pak ships

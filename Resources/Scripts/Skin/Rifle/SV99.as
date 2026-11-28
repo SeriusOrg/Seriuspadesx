@@ -492,7 +492,10 @@ namespace spades {
 			// add weapon offset
 			Vector3 trans(0.0F, 0.0F, 0.0F);
 
-			bool reflexScope = cg_reflexScope.BoolValue;
+			// The PNG scope is this dress's one and only sight: the
+			// reflex setting never swaps it here, the iron-sight
+			// alignment below never runs.
+			bool reflexScope = false;
 			// the aim alignment point still follows the front sight;
 			// aimOff shifts the camera alignment only, without
 			// moving the SightFront.kv6 model
@@ -505,7 +508,7 @@ namespace spades {
 			Vector3 sightPos = (sightAttachment - offset) * globalScale;
 			float sightZ = reflexScope ? (sightPos.z + 0.0125F) : sightPos.z;
 
-			if (cg_trueAimDownSight.BoolValue and cg_pngScope.BoolValue)
+			if (cg_trueAimDownSight.BoolValue)
 				trans += Vector3(Mix(-0.26F, -0.13F, sp), 0.5F * sp, Mix(0.3F, 0.2F, sp));
 			else
 				trans += Vector3(-0.13F * sp, 0.5F, GetZPos(-sightZ));
@@ -534,9 +537,6 @@ namespace spades {
 			swingRot.x -= 2.0F * verticalSwingSpring.position;
 			mat = mat * CreateEulerAnglesMatrix(swingRot * sp);
 
-			if ((cg_trueAimDownSight.BoolValue and not cg_pngScope.BoolValue) and AimDownSightStateSmooth > 0.0F)
-				mat = AdjustToAlignSight(mat, sightPos, AimDownSightStateSmooth);
-
 			// reload animation
 			mat = AdjustToReload(mat);
 
@@ -552,23 +552,17 @@ namespace spades {
 		Vector3 CaseEjectPosition { get { return GetViewWeaponMatrix() * Vector3(-0.025F, -0.1F, -0.1F); } }
 
 		void Draw2D() {
-			// draw reflex sight (2D image)
-			if (cg_reflexScope.IntValue >= 3
-				and not cg_pngScope.BoolValue
-				and AimDownSightStateSmooth > 0.8F) {
-				DrawReflexSight2D(GetViewWeaponMatrix());
-				return;
-			}
-
 			float sw = renderer.ScreenWidth;
 			float sh = renderer.ScreenHeight;
 
 			// custom draw of the classic png scope: auto-fit the
 			// source image to the screen (the stock draw scales
 			// any source image by screen width / 800, which
-			// overflows the screen with a large source image)
-			if (AimDownSightStateSmooth > 0.99F
-				and Clamp(cg_pngScope.IntValue, 0, 3) == 1) {
+			// overflows the screen with a large source image).
+			// It draws at full aim whatever cg_pngScope says: the
+			// PNG is this dress's one and only sight, there is no
+			// 3D sight stance to fall back to.
+			if (AimDownSightStateSmooth > 0.99F) {
 				IntVector3 col;
 				col.x = cg_scopeColorR.IntValue;
 				col.y = cg_scopeColorG.IntValue;
@@ -596,7 +590,7 @@ namespace spades {
 		}
 
 		void AddToScene() {
-			if (cg_pngScope.BoolValue and AimDownSightStateSmooth > 0.99F) {
+			if (AimDownSightStateSmooth > 0.99F) {
 				LeftHandPosition = Vector3(0.0F, 0.0F, 0.0F);
 				RightHandPosition = Vector3(0.0F, 0.0F, 0.0F);
 				return;
@@ -687,18 +681,12 @@ namespace spades {
 				renderer.AddModel(bulletModel, param);
 			}
 
-			// draw sights
-			if (cg_reflexScope.BoolValue) {
-				param.matrix = weapMatrix * gunDelta
-					* CreateTranslateMatrix(reflexSightAttachment)
-					* CreateScaleMatrix(reflexSightScale);
-				renderer.AddModel(reflexSightModel, param); // reflex
-			} else {
-				param.matrix = weapMatrix * gunDelta
-					* CreateTranslateMatrix(rearSightAttachment + Vector3(0, 2, 2))
-					* CreateScaleMatrix(0.53F);
-				renderer.AddModel(rearSightModel, param); // rear
-			}
+			// draw sights: the iron pair only - the PNG scope is the
+			// dress's one and only aim, no reflex ever rides the rail
+			param.matrix = weapMatrix * gunDelta
+				* CreateTranslateMatrix(rearSightAttachment + Vector3(0, 2, 2))
+				* CreateScaleMatrix(0.53F);
+			renderer.AddModel(rearSightModel, param); // rear
 
 			param.matrix = weapMatrix * gunDelta
 				* CreateTranslateMatrix(frontSightAttachment
@@ -753,15 +741,6 @@ namespace spades {
 					* CreateEulerAnglesMatrix(charmRot)
 					* CreateEulerAnglesMatrix(Vector3(rad(90.0F), 0, rad(-90.0F)));
 				renderer.AddModel(charmModel, param);
-			}
-
-			// draw reflex sight (3D sprite)
-			int reflexMode = cg_reflexScope.IntValue;
-			if ((reflexMode >= 1 and reflexMode < 3) and not cg_pngScope.BoolValue and AimDownSightStateSmooth > 0.8F) {
-				bool dotReflex = reflexMode == 1;
-				float reflexSize = dotReflex ? 0.02F : 0.125F;
-				Vector3 sightPos = reflexSightAttachment - Vector3(reflexSightAttachment.x, 0.0F, -0.05F);
-				DrawReflexSight3D(dotReflex ? ballImage : reflexImage, weapMatrix * gunDelta * sightPos, reflexSize);
 			}
 
 			// draw scope lens: a single glass. Voxels authored

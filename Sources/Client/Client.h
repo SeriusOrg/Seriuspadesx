@@ -1361,6 +1361,11 @@ namespace spades {
 			void PlayerDestroyedBlockWithWeaponOrTool(IntVector3);
 			void PlayerDiggedBlock(IntVector3);
 			void GrenadeDestroyedBlock(IntVector3);
+			/** The RPG's rocket leaving another player's tube, drawn
+			 * from the grenade packet whose fuse rides below zero. The
+			 * flying rocket is all it draws: the burst itself arrives
+			 * with the server's own word, as the grenade's does. */
+			void SpawnNetRocket(Vector3 pos, Vector3 dir);
 			void PlayerLeaving(Player&);
 			void PlayerJoinedTeam(Player&);
 			void PlayerSpawned(Player&);

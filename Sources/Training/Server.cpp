@@ -840,6 +840,7 @@ struct Grenade {
     Vec3 pos;
     double explode_at;
     bool acid = false;   // the breath of a Spitter: a pool, not a crater
+    bool rocket = false;   // the RPG's round: a burst 1.5x the grenade's
 };
 
 // One price the store's host changed from the default, by the item's
@@ -6708,10 +6709,14 @@ struct Server::Impl {
         if (!owner || !owner->named || owner->team != g.team || owner->spectator()) return;
         const Vec3& pos = g.pos;
         if (pos.x < 0 || pos.x > 512 || pos.y < 0 || pos.y > 512 || pos.z < 0 || pos.z > 63) return;
+        // The rocket's burst pays one and a half times the grenade's:
+        // the hurt on the people and the bite in the blocks both.
+        const float scale = g.rocket ? 1.5f : 1.0f;
         for (auto& pp : players) {
             if (!pp || !pp->alive) continue;
             if (pp.get() != owner && pp->team == owner->team) continue;
-            const float dmg = nade::blast_damage(&phys_map, pos, pp->body.pos);
+            const float dmg = nade::blast_damage(&phys_map, pos, pp->body.pos,
+                                                 scale);
             if (static_cast<int>(dmg) <= 0) continue;
             set_hp(*pp, pp->hp - static_cast<int>(dmg), owner, kGrenadeKill, &pos);
         }
@@ -6719,10 +6724,31 @@ struct Server::Impl {
         const int y = static_cast<int>(std::floor(pos.y));
         const int z = static_cast<int>(std::floor(pos.z));
         std::vector<Cell> removed;
-        for (int nx = x - 1; nx <= x + 1; ++nx)
-            for (int ny = y - 1; ny <= y + 1; ++ny)
-                for (int nz = z - 1; nz <= z + 1; ++nz) {
+        // The bite in the blocks: the grenade's own cube, grown by
+        // the rocket's one and a half into a rounded pocket - the
+        // cells out to one and a half times the cube's own corner,
+        // the 5x5x5 span without its heavy corners. The 3x3x3 heart
+        // rides out on the grenade's own packet (every client
+        // unmakes that cube by itself); the ring the rocket adds
+        // beyond it rides out one block at a time, the same word
+        // the horde's spades speak.
+        const float reach = scale * std::sqrt(3.0f);
+        const int span = static_cast<int>(reach);
+        std::vector<Cell> ring;
+        for (int dx = -span; dx <= span; ++dx)
+            for (int dy = -span; dy <= span; ++dy)
+                for (int dz = -span; dz <= span; ++dz) {
+                    const float d = std::sqrt(static_cast<float>(
+                        dx * dx + dy * dy + dz * dz));
+                    if (d > reach) continue;
+                    const int nx = x + dx, ny = y + dy, nz = z + dz;
                     if (core_column_cell(nx, ny, nz)) continue;  // the core holds
+                    const bool outside = dx < -1 || dx > 1 || dy < -1
+                                         || dy > 1 || dz < -1 || dz > 1;
+                    if (g.rocket && outside) {
+                        if (!map.solid(nx, ny, nz)) continue;
+                        ring.push_back(Cell{nx, ny, nz});
+                    }
                     map.destroy_point(nx, ny, nz, &removed);
                 }
         touched(removed, false);
@@ -6734,6 +6760,16 @@ struct Server::Impl {
         bw.write_i32(y);
         bw.write_i32(z);
         broadcast(bw, true);
+        for (const Cell& c : ring) {
+            ByteWriter cellw;
+            cellw.write_u8(static_cast<uint8_t>(PacketId::BlockAction));
+            cellw.write_u8(static_cast<uint8_t>(owner->id));
+            cellw.write_u8(static_cast<uint8_t>(kDestroyBlock));
+            cellw.write_i32(c.x);
+            cellw.write_i32(c.y);
+            cellw.write_i32(c.z);
+            broadcast(cellw, true);
+        }
     }
 
     // The landing of the acid: a pool painted green where it touches
@@ -7434,6 +7470,35 @@ struct Server::Impl {
         Vec3 pos = br.read_vec();
         Vec3 vel = br.read_vec();
         if (!std::isfinite(fuse) || !finite3(pos) || !finite3(vel)) return;
+        // A fuse below zero is the wire's word for the RPG's rocket:
+        // the client dressed as the rocket launcher sends it on the
+        // release of its trigger, the direction in the velocity. The
+        // flight is known the moment it leaves the tube - straight,
+        // a block a tick - so the burst is booked now and the whole
+        // room sees the same rocket fly to it.
+        if (fuse < 0.0f) {
+            const int rpg = store::find_item("rpg");
+            if (rpg < 0 || p.store_level[static_cast<size_t>(rpg)] < 1)
+                return;   // the dress was never bought: no rocket, no spend
+            if (p.grenades <= 0) return;
+            p.grenades -= 1;
+            if (!near3(pos, p.body.pos, 10.0f)) pos = p.body.pos;
+            const float len = std::sqrt(vel.x * vel.x + vel.y * vel.y
+                                       + vel.z * vel.z);
+            if (len < 0.01f) return;
+            const Vec3 dir{vel.x / len, vel.y / len, vel.z / len};
+            const nade::RocketImpact at = nade::rocket_impact(&phys_map, pos, dir);
+            grenades.push_back(Grenade{p.id, p.team, at.pos,
+                                       world_time + at.t, false, true});
+            ByteWriter bw;
+            bw.write_u8(static_cast<uint8_t>(PacketId::GrenadePacket));
+            bw.write_u8(static_cast<uint8_t>(p.id));
+            bw.write_f32(-1.0f);
+            bw.write_vec(pos);
+            bw.write_vec(dir);
+            broadcast(bw, false, p.id);
+            return;
+        }
         if (p.grenades <= 0) return;
         p.grenades -= 1;
         if (!near3(pos, p.body.pos, 10.0f)) pos = p.body.pos;

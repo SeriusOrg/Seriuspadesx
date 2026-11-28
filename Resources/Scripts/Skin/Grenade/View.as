@@ -170,7 +170,13 @@
 		}
 	}
 
+	// The class the store's word picked: the RPG's own dress skin
+	// when the rocket launcher is worn (the whole View skin, its
+	// models and their transforms together), the stock grenade's
+	// otherwise.
 	IGrenadeSkin@ CreateViewGrenadeSkin(Renderer@ r, AudioDevice@ dev) {
+		if (WeaponDressTier(4) >= 1)
+			return ViewRPGSkin(r, dev);
 		return ViewGrenadeSkin(r, dev);
 	}
 }

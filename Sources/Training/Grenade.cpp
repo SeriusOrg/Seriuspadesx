@@ -97,7 +97,8 @@ bool can_see(const SolidMap* map, const Vec3& a, const Vec3& b) {
 
 }  // namespace
 
-float blast_damage(const SolidMap* map, const Vec3& blast, const Vec3& who) {
+float blast_damage(const SolidMap* map, const Vec3& blast, const Vec3& who,
+                   float scale) {
     const float dx = who.x - blast.x;
     const float dy = who.y - blast.y;
     const float dz = who.z - blast.z;
@@ -105,9 +106,10 @@ float blast_damage(const SolidMap* map, const Vec3& blast, const Vec3& who) {
     // is a box and not a sphere, so a man 15 blocks along each of the three
     // axes - 26 away in a straight line - still takes damage, and one 16
     // blocks along a single axis takes none.
-    if (std::fabs(dx) >= kBlastCutoff) return 0.0f;
-    if (std::fabs(dy) >= kBlastCutoff) return 0.0f;
-    if (std::fabs(dz) >= kBlastCutoff) return 0.0f;
+    const float cutoff = kBlastCutoff * scale;
+    if (std::fabs(dx) >= cutoff) return 0.0f;
+    if (std::fabs(dy) >= cutoff) return 0.0f;
+    if (std::fabs(dz) >= cutoff) return 0.0f;
     // hit_test() - a wall between the blast and the man stops all of it. This
     // is the rule that makes a grenade round a corner useless and one through
     // a doorway lethal, and why a thrower is safe behind a wall: no sight
@@ -115,7 +117,7 @@ float blast_damage(const SolidMap* map, const Vec3& blast, const Vec3& who) {
     if (!can_see(map, blast, who)) return 0.0f;
     const float v = dx * dx + dy * dy + dz * dz;
     if (v == 0.0f) return 100.0f;
-    return kBlastK / v;
+    return kBlastK * scale / v;
 }
 
 Impact simulate(const SolidMap* map, const Vec3& from, const Vec3& vel, float fuse) {
@@ -165,6 +167,54 @@ Impact simulate(const SolidMap* map, const Vec3& from, const Vec3& vel, float fu
 
     out.pos = p;
     out.time = fuse;
+    return out;
+}
+
+RocketImpact rocket_impact(const SolidMap* map, const Vec3& from, const Vec3& dir) {
+    RocketImpact out;
+    out.pos = from;
+
+    // The grenade sim works in pyspades speed words: a unit of speed
+    // is kBlocksPerUnit blocks a second, and one tick of position is
+    // v * kTickDt * kBlocksPerUnit. The rocket cruises at
+    // kRocketSpeed blocks a second - exactly one block a tick.
+    const float speed_v = kRocketSpeed / kBlocksPerUnit;
+    const float gravity_v = kRocketGravity / kBlocksPerUnit;
+    const float f = kTickDt * kBlocksPerUnit;
+
+    Vec3 p = from;
+    Vec3 v{dir.x * speed_v, dir.y * speed_v, dir.z * speed_v};
+    float t = 0.0f;
+    float traveled = 0.0f;
+
+    // One 1/60s tick at a time, no bounces: the first solid cell the
+    // rocket enters is where it goes off, sitting where it was at the
+    // top of that tick (the grenade undoes its move the same way).
+    for (int guard = 0; guard < 512; ++guard) {
+        t += kTickDt;
+        v.z += gravity_v * kTickDt;   // gravity, +z is down
+        const Vec3 fpos = p;
+        p.x += v.x * f;
+        p.y += v.y * f;
+        p.z += v.z * f;
+        traveled += kRocketSpeed * kTickDt;
+
+        if (!clipworld(map, ifloor(p.x), ifloor(p.y), ifloor(p.z))) {
+            // a burst of air at the end of the road
+            if (traveled >= kRocketRange) {
+                out.pos = p;
+                out.t = t;
+                return out;
+            }
+            continue;
+        }
+        out.pos = fpos;
+        out.t = t;
+        return out;
+    }
+    // the guard ran out: past the whole map, burst where it is
+    out.pos = p;
+    out.t = t;
     return out;
 }
 

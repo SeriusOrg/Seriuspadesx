@@ -22,6 +22,7 @@
 #include <cmath>
 
 #include "Client.h"
+#include "RocketEntity.h"
 
 #include <Core/ConcurrentDispatch.h>
 #include <Core/FileManager.h>
@@ -1138,8 +1139,13 @@ namespace spades {
 			SPADES_MARK_FUNCTION();
 
 			if (!IsMuted()) {
+				// The RPG's cook is a raised tube and a closed sight, not
+				// a pulled pin: the dress pak's own raise sample speaks.
+				const bool rocket = p.IsLocalPlayer() && WeaponDressTierFor(4) >= 1;
 				Handle<IAudioChunk> c =
-					audioDevice->RegisterSound("Sounds/Weapons/Grenade/Fire.opus");
+					audioDevice->RegisterSound(rocket
+						? WeaponDressPath(4, "Sounds/Weapons/Rifle/RaiseLocal.opus")
+						: "Sounds/Weapons/Grenade/Fire.opus");
 				if (IsPlayerInFirstPerson(p.GetId())) {
 					audioDevice->PlayLocal(c.GetPointerOrNull(),
 						MakeVector3(0.4F, -0.3F, 0.5F), AudioParam());
@@ -1164,8 +1170,24 @@ namespace spades {
 			stmp::optional<const Grenade&> g) {
 			SPADES_MARK_FUNCTION();
 
-			if (g && p.IsLocalPlayer())
+			if (g && p.IsLocalPlayer()) {
 				activeNet->SendGrenade(*g);
+				// A fuse below zero is the RPG's rocket: the word is
+				// already on the wire, and the flying round is drawn
+				// here. The throw's own sound stays in the tube: the
+				// skin plays the launch, the rocket its flight.
+				if (g->GetFuse() < 0.0F) {
+					Handle<IAudioChunk> woosh;
+					if (!IsMuted())
+						woosh = audioDevice->RegisterSound(
+							"WeaponMods/GrenadeRPG/Sounds/Weapons/Rifle/woosh.opus");
+					AddLocalEntity(stmp::make_unique<RocketEntity>(
+						*this, IsMuted() ? nullptr : audioDevice.GetPointerOrNull(),
+						std::move(woosh), g->GetPosition(),
+						g->GetVelocity().Normalize()));
+					return;
+				}
+			}
 
 			if (!IsMuted()) {
 				Handle<IAudioChunk> c =

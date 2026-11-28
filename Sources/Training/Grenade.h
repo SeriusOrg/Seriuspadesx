@@ -116,9 +116,19 @@ constexpr float kBlastCutoff = 16.0f;
 constexpr float kBlastK = 4096.0f;
 constexpr float kLethalRadius = 6.4f;
 
+// The rocket's flight (see rocket_impact below): a straight cruise at
+// 60 blocks a second, a light pull of 0.138 blocks a second squared,
+// a burst of air at 300 blocks when nothing was hit.
+constexpr float kRocketSpeed = 60.0f;
+constexpr float kRocketGravity = 0.138f;
+constexpr float kRocketRange = 300.0f;
+
 // 4096/d^2 with the line-of-sight gate, for any two points. `map` may be null,
-// in which case sight is assumed - callers that care pass a map.
-float blast_damage(const SolidMap* map, const Vec3& blast, const Vec3& who);
+// in which case sight is assumed - callers that care pass a map. `scale`
+// stretches both the per-axis cutoff box and the damage constant: the rocket
+// burst pays 1.5, the hand grenade the stock 1.0.
+float blast_damage(const SolidMap* map, const Vec3& blast, const Vec3& who,
+                   float scale = 1.0f);
 
 // Where a grenade thrown with `vel` from `from` actually ends up, simulated
 // one 1/60s tick at a time exactly as move_grenade does it, bounces and all,
@@ -132,5 +142,21 @@ struct Impact {
     int bounces = 0;
 };
 Impact simulate(const SolidMap* map, const Vec3& from, const Vec3& vel, float fuse);
+
+// The RPG's rocket: no fuse, no bounce - a straight cruise at
+// kRocketSpeed blocks a second with a light bow to the pull of the
+// world, detonating on the first solid cell it meets, or in a burst of
+// air at kRocketRange when nothing was hit. The client draws the same
+// flight (Sources/Client/RocketEntity.cpp); this predicts where it
+// ends, so the burst is booked the moment the trigger is released.
+//
+//     speed 60 blocks/s: one block a tick
+//     gravity 0.138 blocks/s^2: ~0.4 blocks of drop at 150 blocks
+//     range 300 blocks: the air burst, ~5 s of flight
+struct RocketImpact {
+    Vec3 pos{};   // where it goes off
+    float t = 0.0f;   // when: the time of flight, in seconds
+};
+RocketImpact rocket_impact(const SolidMap* map, const Vec3& from, const Vec3& dir);
 
 }  // namespace nade

@@ -391,6 +391,13 @@ namespace spades {
 						float fuse = r.ReadFloat();
 						Vector3 pos = r.ReadVector3();
 						Vector3 vel = r.ReadVector3();
+						// A fuse below zero is the RPG's rocket: no
+						// grenade enters the world, the flying round is
+						// drawn instead.
+						if (fuse < 0.0F) {
+							client->SpawnNetRocket(pos, vel.Normalize());
+							break;
+						}
 						Grenade* g = new Grenade(*GetWorld(), pId, pos, vel, fuse);
 						GetWorld()->AddGrenade(std::unique_ptr<Grenade>{g});
 					}

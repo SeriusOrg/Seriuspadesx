@@ -952,6 +952,24 @@ namespace spades {
 
 			if (IsLocalPlayer()) {
 				Vector3 const dir = GetToolDirection();
+				// The RPG's tube: press and release fire a rocket, not a
+				// throw. No grenade enters the world here - the listener
+				// sends the word to the server (a fuse below zero means
+				// "rocket" on the wire) and spawns the flying one, and
+				// the server books the burst where the flight ends. The
+				// tube then takes its time to be loaded again.
+				if (rocketLauncher) {
+					Vector3 const muzzle = GetToolOrigin() + (dir * 1.2F);
+					auto rocket = stmp::make_unique<Grenade>(
+						world, playerId, muzzle, dir, -1.0F);
+					if (world.GetListener())
+						world.GetListener()->PlayerThrewGrenade(*this, *rocket);
+					if (grenades > 0)
+						grenades--;
+					cookingGrenade = false;
+					nextGrenadeTime = world.GetTime() + 2.5F;
+					return;
+				}
 				Vector3 const muzzle = GetToolOrigin() + (dir * 0.1F);
 				// A VR throw carries the hand's own speed and direction; the server
 				// caps it at 2.0 relative to the thrower, which the client keeps under.

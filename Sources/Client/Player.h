@@ -93,6 +93,11 @@ namespace spades {
 			// the stock spade and every world the store never stood in.
 			float spadeRangeScale = 1.0F;
 			float spadeDamageScale = 1.0F;
+			// True when the local player wears the RPG dress on the
+			// grenade tool: the tool's press and release fire a
+			// rocket instead of throwing a grenade. Set from the
+			// store's word with the tiers, in ApplyWeaponTiers.
+			bool rocketLauncher = false;
 			int playerId;
 			int teamId;
 
@@ -179,6 +184,9 @@ namespace spades {
 				spadeRangeScale = range;
 				spadeDamageScale = damage;
 			}
+			/** True when this player's grenade tool is dressed as the
+			 * RPG and fires rockets (the local player only). */
+			void SetRocketLauncher(bool rocket) { rocketLauncher = rocket; }
 			int GetTeamId() { return teamId; }
 			bool IsTeammate(Player& p) { return teamId == p.teamId; }
 			bool IsSpectator() { return teamId >= 2; }
